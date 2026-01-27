@@ -19,7 +19,8 @@ export default function TechnicianDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [reviewJob, setReviewJob] = useState<any | null>(null);
-    const { signOut } = useAuth();
+    const { signOut, user } = useAuth();
+
 
     useEffect(() => {
         setIsOnline(navigator.onLine);
@@ -106,9 +107,14 @@ export default function TechnicianDashboard() {
                     </h1>
                     <div className="flex items-center gap-2 mt-1">
                         <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                        <span className="text-xs text-slate-400 font-medium">
-                            {isOnline ? 'Online - Sincronizado' : 'Offline - Guardado Local'}
-                        </span>
+                        <div className="flex flex-col">
+                            <span className="text-xs text-slate-400 font-medium">
+                                {isOnline ? 'Online' : 'Offline'}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase">
+                                {user?.user_metadata?.full_name || 'Técnico'}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <div className="flex gap-2">

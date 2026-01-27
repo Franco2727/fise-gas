@@ -10,14 +10,14 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<'validation' | 'habilitations' | 'history' | 'analytics'>('validation');
-    const { signOut } = useAuth();
+    const { signOut, user } = useAuth();
 
     return (
         <div className="min-h-screen bg-slate-950 p-6 md:p-8">
             <header className="mb-8 flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Panel de Control</h1>
-                    <p className="text-slate-400">Bienvenido, Administrador</p>
+                    <p className="text-slate-400">Bienvenido, {user?.user_metadata?.full_name || 'Administrador'}</p>
                 </div>
                 <div className="flex gap-2">
                     <button

@@ -7,12 +7,13 @@ import { useAuth } from '@/context/AuthContext';
 import HistoryDetailModal from '@/components/shared/HistoryDetailModal';
 
 export default function VendedorDashboard() {
-    const { signOut } = useAuth();
+    const { signOut, user } = useAuth();
     const [activeTab, setActiveTab] = useState<'registro' | 'incompletos' | 'ventas'>('registro');
     const [loading, setLoading] = useState(false);
 
     // Lists
     const [sales, setSales] = useState<any[]>([]);
+
     const [incompleteSales, setIncompleteSales] = useState<any[]>([]);
 
     // For viewing history details
@@ -128,7 +129,7 @@ export default function VendedorDashboard() {
                 cliente_direccion: formData.direccion,
                 latitud: formData.lat,
                 longitud: formData.lng,
-                vendedor_nombre: 'Vendedor Test',
+                vendedor_nombre: user?.user_metadata?.full_name || 'Vendedor Desconocido',
                 estado_fise: partial ? 'Incompleto' : 'Pendiente'
             };
 
@@ -276,6 +277,7 @@ export default function VendedorDashboard() {
                         <UserPlus className="text-orange-500 h-8 w-8" />
                         Ventas
                     </h1>
+                    <p className="text-slate-400 text-xs pl-10">Hola, {user?.user_metadata?.full_name || 'Vendedor'}</p>
                 </div>
                 <button onClick={() => signOut()} className="bg-slate-800 p-2 rounded-full text-slate-400">
                     <LogOut className="h-5 w-5" />
