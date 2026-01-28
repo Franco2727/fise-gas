@@ -31,27 +31,44 @@ export default function VendedorDashboard() {
 
     const [files, setFiles] = useState<{
         contrato: File | null;
+        contrato2: File | null;
+        contrato3: File | null;
+        contrato4: File | null;
+        contrato5: File | null;
+        contrato6: File | null;
         fachada: File | null;
         izquierda: File | null;
         derecha: File | null;
+        cartaAutorizacion: File | null;
+        listadoComercial: File | null;
+        formatoFirmas: File | null;
+        djPropiedad: File | null;
+        bonogas: File | null;
     }>({
-        contrato: null,
-        fachada: null,
-        izquierda: null,
-        derecha: null
+        contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
+        fachada: null, izquierda: null, derecha: null,
+        cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
     });
 
-    // New State for Existing Photos
     const [existingPhotos, setExistingPhotos] = useState<{
         contrato: string | null;
+        contrato2: string | null;
+        contrato3: string | null;
+        contrato4: string | null;
+        contrato5: string | null;
+        contrato6: string | null;
         fachada: string | null;
         izquierda: string | null;
         derecha: string | null;
+        cartaAutorizacion: string | null;
+        listadoComercial: string | null;
+        formatoFirmas: string | null;
+        djPropiedad: string | null;
+        bonogas: string | null;
     }>({
-        contrato: null,
-        fachada: null,
-        izquierda: null,
-        derecha: null
+        contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
+        fachada: null, izquierda: null, derecha: null,
+        cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
     });
 
     const fetchSales = async () => {
@@ -88,13 +105,13 @@ export default function VendedorDashboard() {
 
         if (!partial) {
             // Validate photos (New Files OR Existing URLs)
-            const hasContrato = files.contrato || existingPhotos.contrato;
-            const hasFachada = files.fachada || existingPhotos.fachada;
-            const hasIzquierda = files.izquierda || existingPhotos.izquierda;
-            const hasDerecha = files.derecha || existingPhotos.derecha;
+            const check = (field: keyof typeof files) => files[field] || existingPhotos[field];
 
-            if (!hasContrato || !hasFachada || !hasIzquierda || !hasDerecha) {
-                alert('Para finalizar, debes subir todas las fotos.');
+            const required = ['contrato', 'contrato2', 'contrato3', 'contrato4', 'contrato5', 'contrato6', 'fachada', 'izquierda', 'derecha'] as const;
+            const missing = required.filter(f => !check(f));
+
+            if (missing.length > 0) {
+                alert(`Faltan fotos obligatorias: ${missing.join(', ')}`);
                 return;
             }
         }
@@ -111,13 +128,21 @@ export default function VendedorDashboard() {
                 return publicUrl;
             };
 
-            // Only upload if new file exists
-            const [newContrato, newFachada, newIzquierda, newDerecha] = await Promise.all([
-                uploadFile(files.contrato, 'contrato'),
-                uploadFile(files.fachada, 'fachada'),
-                uploadFile(files.izquierda, 'izquierda'),
-                uploadFile(files.derecha, 'derecha')
-            ]);
+            // Map fields to prefixes
+            const fieldMap: Record<keyof typeof files, string> = {
+                contrato: 'contrato', contrato2: 'contrato_2', contrato3: 'contrato_3', contrato4: 'contrato_4', contrato5: 'contrato_5', contrato6: 'contrato_6',
+                fachada: 'fachada', izquierda: 'izquierda', derecha: 'derecha',
+                cartaAutorizacion: 'doc_carta', listadoComercial: 'doc_listado', formatoFirmas: 'doc_firmas', djPropiedad: 'doc_dj', bonogas: 'doc_bono'
+            };
+
+            // Upload all new files
+            const uploads: Partial<Record<keyof typeof files, string>> = {};
+            await Promise.all(Object.keys(files).map(async (key) => {
+                const k = key as keyof typeof files;
+                if (files[k]) {
+                    uploads[k] = await uploadFile(files[k], fieldMap[k]) || undefined;
+                }
+            }));
 
             // Check if exists to update or insert
             const { data: existing } = await supabase.from('operaciones_maestra').select('id_dni').eq('id_dni', formData.dni).maybeSingle();
@@ -133,18 +158,26 @@ export default function VendedorDashboard() {
                 estado_fise: partial ? 'Incompleto' : 'Pendiente'
             };
 
-            // Use New URL if uploaded, otherwise keep Existing URL
-            if (newContrato) payload.foto_contrato = newContrato;
-            else if (existingPhotos.contrato) payload.foto_contrato = existingPhotos.contrato;
+            // Helper to set payload field - favors new upload, falls back to existing
+            const setField = (payloadKey: string, stateKey: keyof typeof files) => {
+                if (uploads[stateKey]) payload[payloadKey] = uploads[stateKey];
+                else if (existingPhotos[stateKey]) payload[payloadKey] = existingPhotos[stateKey];
+            };
 
-            if (newFachada) payload.foto_fachada = newFachada;
-            else if (existingPhotos.fachada) payload.foto_fachada = existingPhotos.fachada;
-
-            if (newIzquierda) payload.foto_izquierda = newIzquierda;
-            else if (existingPhotos.izquierda) payload.foto_izquierda = existingPhotos.izquierda;
-
-            if (newDerecha) payload.foto_derecha = newDerecha;
-            else if (existingPhotos.derecha) payload.foto_derecha = existingPhotos.derecha;
+            setField('foto_contrato', 'contrato');
+            setField('foto_contrato_2', 'contrato2');
+            setField('foto_contrato_3', 'contrato3');
+            setField('foto_contrato_4', 'contrato4');
+            setField('foto_contrato_5', 'contrato5');
+            setField('foto_contrato_6', 'contrato6');
+            setField('foto_fachada', 'fachada');
+            setField('foto_izquierda', 'izquierda');
+            setField('foto_derecha', 'derecha');
+            setField('doc_carta_autorizacion', 'cartaAutorizacion');
+            setField('doc_listado_comercial', 'listadoComercial');
+            setField('doc_formato_firmas', 'formatoFirmas');
+            setField('doc_dj_propiedad', 'djPropiedad');
+            setField('doc_bonogas', 'bonogas');
 
             let error;
             if (existing) {
@@ -172,8 +205,14 @@ export default function VendedorDashboard() {
 
     const resetForm = () => {
         setFormData({ dni: '', nombre: '', telefono: '', direccion: '', lat: null, lng: null });
-        setFiles({ contrato: null, fachada: null, izquierda: null, derecha: null });
-        setExistingPhotos({ contrato: null, fachada: null, izquierda: null, derecha: null });
+        const emptyFiles = {
+            contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
+            fachada: null, izquierda: null, derecha: null,
+            cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
+        };
+        setFiles(emptyFiles);
+        // Cast nulls to correct type for existing photos
+        setExistingPhotos(emptyFiles as any);
     }
 
     const loadIncomplete = (sale: any) => {
@@ -189,13 +228,27 @@ export default function VendedorDashboard() {
         // Load existing photos from DB
         setExistingPhotos({
             contrato: sale.foto_contrato,
+            contrato2: sale.foto_contrato_2,
+            contrato3: sale.foto_contrato_3,
+            contrato4: sale.foto_contrato_4,
+            contrato5: sale.foto_contrato_5,
+            contrato6: sale.foto_contrato_6,
             fachada: sale.foto_fachada,
             izquierda: sale.foto_izquierda,
-            derecha: sale.foto_derecha
+            derecha: sale.foto_derecha,
+            cartaAutorizacion: sale.doc_carta_autorizacion,
+            listadoComercial: sale.doc_listado_comercial,
+            formatoFirmas: sale.doc_formato_firmas,
+            djPropiedad: sale.doc_dj_propiedad,
+            bonogas: sale.doc_bonogas
         });
 
         // Reset new files
-        setFiles({ contrato: null, fachada: null, izquierda: null, derecha: null });
+        setFiles({
+            contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
+            fachada: null, izquierda: null, derecha: null,
+            cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
+        });
         setActiveTab('registro');
     };
 
@@ -328,13 +381,39 @@ export default function VendedorDashboard() {
                         </div>
                         <div className="space-y-3 pt-4 border-t border-slate-800 mt-4">
                             <div className="flex justify-between items-center mb-2">
-                                <p className="text-white font-bold text-sm">Evidencias (Opcional para borrador)</p>
+                                <p className="text-white font-bold text-sm">Evidencias Principales</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <FileInput label="Fachada" field="fachada" />
                                 <FileInput label="Lateral Izq." field="izquierda" />
                                 <FileInput label="Lateral Der." field="derecha" />
-                                <FileInput label="Contrato Firmado" field="contrato" />
+                                <FileInput label="Contrato (Pág. 1)" field="contrato" />
+                            </div>
+
+                            {/* Expanded Contract Section */}
+                            <div className="mt-4 border-t border-slate-800 pt-3">
+                                <p className="text-slate-400 font-bold text-xs uppercase mb-3">Contrato Completo (Obligatorio)</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <FileInput label="Pág. 2" field="contrato2" />
+                                    <FileInput label="Pág. 3" field="contrato3" />
+                                    <FileInput label="Pág. 4" field="contrato4" />
+                                    <FileInput label="Pág. 5" field="contrato5" />
+                                    <FileInput label="Pág. 6" field="contrato6" />
+                                </div>
+                            </div>
+
+                            {/* Optional Documents Section */}
+                            <div className="mt-4 border-t border-slate-800 pt-3 bg-slate-800/20 p-3 rounded-lg">
+                                <p className="text-blue-400 font-bold text-xs uppercase mb-3 flex items-center gap-2">
+                                    <AlertTriangle className="h-3 w-3" /> Documentos Adicionales (Opcional)
+                                </p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <FileInput label="Carta Autorización" field="cartaAutorizacion" />
+                                    <FileInput label="Listado Comercial" field="listadoComercial" />
+                                    <FileInput label="Formato Firmas" field="formatoFirmas" />
+                                    <FileInput label="DJ Propiedad" field="djPropiedad" />
+                                    <FileInput label="BonoGas" field="bonogas" />
+                                </div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 pt-4">

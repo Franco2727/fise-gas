@@ -12,6 +12,7 @@ interface Job {
     estado_operativo: string;
     latitud?: number;
     longitud?: number;
+    fecha_aprobacion: string;
 }
 
 export default function JobCard({ job, onComplete }: { job: Job; onComplete: () => void }) {
@@ -203,12 +204,26 @@ export default function JobCard({ job, onComplete }: { job: Job; onComplete: () 
         </div>
     );
 
+    // Calculate time since approval
+    const approvalDate = new Date(job.fecha_aprobacion);
+    const now = new Date();
+    const diffMs = now.getTime() - approvalDate.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const isPriority = diffHours > 48;
+
     const mapsUrl = job.latitud && job.longitud
         ? `https://www.google.com/maps/search/?api=1&query=${job.latitud},${job.longitud}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.cliente_direccion || '')}`;
 
     return (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg mb-4 overflow-hidden transition-all">
+        <div className={`bg-slate-800 rounded-xl border shadow-lg mb-4 overflow-hidden transition-all relative ${isPriority ? 'border-red-500/50 animate-critical' : 'border-slate-700'}`}>
+
+            {isPriority && (
+                <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-bl-lg shadow-lg z-10">
+                    Prioridad +48h
+                </div>
+            )}
+
             {/* Header - Clickable Trigger */}
             <div
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -222,8 +237,13 @@ export default function JobCard({ job, onComplete }: { job: Job; onComplete: () 
                                 DNI: {job.id_dni}
                             </span>
                         </div>
-                        <div className="flex items-center text-slate-400 text-sm">
-                            <MapPin className="h-3 w-3 mr-1" /> {job.cliente_direccion}
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                            <div className="flex items-center">
+                                <MapPin className="h-3 w-3 mr-1" /> {job.cliente_direccion}
+                            </div>
+                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold ${isPriority ? 'bg-red-500/20 text-red-400' : 'bg-slate-800 text-slate-400'}`}>
+                                ⏱ En espera: {diffHours}h
+                            </div>
                         </div>
                     </div>
                     <div className="text-slate-500 ml-4">

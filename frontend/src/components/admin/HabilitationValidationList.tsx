@@ -158,10 +158,19 @@ export default function HabilitationValidationList() {
                                             Habilitación
                                         </span>
                                     </h3>
-                                    <div className="flex items-center gap-3 text-sm text-slate-400">
+                                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
                                         <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">DNI: {req.id_dni}</span>
                                         <span className="hidden sm:inline w-1 h-1 bg-slate-600 rounded-full"></span>
-                                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(req.fecha_habilitacion).toLocaleDateString()}</span>
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            Registrado: {new Date(req.fecha_habilitacion).toLocaleDateString()}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${(Date.now() - new Date(req.fecha_habilitacion).getTime()) > 24 * 60 * 60 * 1000
+                                                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                                : 'bg-slate-700 text-slate-300'
+                                            }`}>
+                                            ⏱ Espera: {Math.floor((Date.now() - new Date(req.fecha_habilitacion).getTime()) / (1000 * 60 * 60))}h
+                                        </span>
                                     </div>
                                 </div>
                             </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AdminStatsCards from '@/components/admin/AdminStatsCards';
 import ValidationList from '@/components/admin/ValidationList';
 import HabilitationValidationList from '@/components/admin/HabilitationValidationList';
 import FinancialChart from '@/components/admin/FinancialChart';
@@ -29,6 +30,9 @@ export default function AdminDashboard() {
                     </button>
                 </div>
             </header>
+
+            {/* KPI Cards */}
+            <AdminStatsCards />
 
             <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
                 <button

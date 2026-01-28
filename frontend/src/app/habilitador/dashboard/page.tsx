@@ -127,31 +127,47 @@ export default function HabilitadorDashboard() {
                             </div>
                         ) : (
                             <div className="grid gap-4">
-                                {jobs.map(job => (
-                                    <div key={job.id_dni} className="bg-slate-900 rounded-xl p-5 border border-slate-800 hover:border-purple-500/50 transition-colors shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group">
-                                        <div className="flex items-start gap-4">
-                                            <div className="h-12 w-12 bg-purple-500/10 rounded-full flex items-center justify-center text-purple-400 font-bold text-lg border border-purple-500/20">
-                                                {job.cliente_nombre.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-white text-lg">{job.cliente_nombre}</h3>
-                                                <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
-                                                    <span className="font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-xs">DNI: {job.id_dni}</span>
-                                                    <span>•</span>
-                                                    <span>Instalado: {new Date(job.fecha_instalacion).toLocaleDateString()}</span>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-1">{job.cliente_direccion}</p>
-                                            </div>
-                                        </div>
+                                {jobs.map(job => {
+                                    const hoursSinceInstall = (Date.now() - new Date(job.fecha_instalacion).getTime()) / (1000 * 60 * 60);
+                                    const isPriority = hoursSinceInstall > 48;
+                                    const daysElapsed = Math.floor(hoursSinceInstall / 24);
 
-                                        <button
-                                            onClick={() => setSelectedJob(job)}
-                                            className="w-full md:w-auto px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold shadow-lg shadow-purple-900/20 transition-all transform group-hover:translate-x-1"
-                                        >
-                                            Revisar Expediente
-                                        </button>
-                                    </div>
-                                ))}
+                                    return (
+                                        <div key={job.id_dni} className={`bg-slate-900 rounded-xl p-5 border transition-all shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group relative overflow-hidden ${isPriority ? 'border-red-500/50 animate-critical' : 'border-slate-800 hover:border-purple-500/50'}`}>
+
+                                            {isPriority && (
+                                                <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-bl-lg shadow-lg z-10">
+                                                    Prioridad +48h
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-start gap-4">
+                                                <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg border ${isPriority ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                                                    {job.cliente_nombre.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-white text-lg">{job.cliente_nombre}</h3>
+                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400 mt-1">
+                                                        <span className="font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-xs text-slate-300">DNI: {job.id_dni}</span>
+                                                        <span>•</span>
+                                                        <span className={isPriority ? 'text-red-400 font-bold' : ''}>
+                                                            {daysElapsed > 0 ? `${daysElapsed}d y ${Math.floor(hoursSinceInstall % 24)}h de espera` : `${Math.floor(hoursSinceInstall)}h de espera`}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-1">{job.cliente_direccion}</p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => setSelectedJob(job)}
+                                                className={`w-full md:w-auto px-6 py-2.5 rounded-lg font-bold shadow-lg transition-all transform group-hover:translate-x-1 ${isPriority ? 'bg-red-600 hover:bg-red-500 shadow-red-900/40 text-white' : 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/20 text-white'}`}
+                                            >
+                                                Revisar Expediente
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+
                             </div>
                         )}
                     </div>

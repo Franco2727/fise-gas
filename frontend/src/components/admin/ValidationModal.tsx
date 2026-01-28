@@ -11,8 +11,18 @@ interface Operation {
     fecha_creacion: string;
     foto_fachada: string;
     foto_contrato?: string;
+    foto_contrato_2?: string;
+    foto_contrato_3?: string;
+    foto_contrato_4?: string;
+    foto_contrato_5?: string;
+    foto_contrato_6?: string;
     foto_izquierda?: string;
     foto_derecha?: string;
+    doc_carta_autorizacion?: string;
+    doc_listado_comercial?: string;
+    doc_formato_firmas?: string;
+    doc_dj_propiedad?: string;
+    doc_bonogas?: string;
     latitud?: number;
     longitud?: number;
     estado_fise: string;
@@ -67,15 +77,39 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
 
                 {/* Left: Images Grid */}
                 <div className="md:w-3/5 p-6 bg-slate-950/50 overflow-y-auto h-full border-r border-slate-800 custom-scrollbar">
-                    <h3 className="text-slate-400 font-medium mb-4 flex items-center gap-2">
+                    <h3 className="text-slate-400 font-medium mb-4 flex items-center gap-2 sticky top-0 bg-slate-950/80 backdrop-blur py-2 z-10">
                         <FileText className="h-4 w-4" /> Evidencias Multimedia
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Principal</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-6">
                         <ImageCard title="Fachada" src={op.foto_fachada} />
-                        <ImageCard title="Contrato" src={op.foto_contrato} />
-                        <ImageCard title="Lateral Izq" src={op.foto_izquierda} />
-                        <ImageCard title="Lateral Der" src={op.foto_derecha} />
+                        <ImageCard title="Lat. Izquierda" src={op.foto_izquierda} />
+                        <ImageCard title="Lat. Derecha" src={op.foto_derecha} />
                     </div>
+
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Contrato (6 Páginas)</h4>
+                    <div className="grid grid-cols-3 gap-2 mb-6">
+                        <ImageCard title="Pág 1" src={op.foto_contrato} />
+                        <ImageCard title="Pág 2" src={op.foto_contrato_2} />
+                        <ImageCard title="Pág 3" src={op.foto_contrato_3} />
+                        <ImageCard title="Pág 4" src={op.foto_contrato_4} />
+                        <ImageCard title="Pág 5" src={op.foto_contrato_5} />
+                        <ImageCard title="Pág 6" src={op.foto_contrato_6} />
+                    </div>
+
+                    {(op.doc_carta_autorizacion || op.doc_listado_comercial || op.doc_formato_firmas || op.doc_dj_propiedad || op.doc_bonogas) && (
+                        <>
+                            <h4 className="text-xs font-bold text-blue-400 uppercase mb-2 mt-4">Documentación Adicional</h4>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                {op.doc_carta_autorizacion && <ImageCard title="Carta Autorización" src={op.doc_carta_autorizacion} />}
+                                {op.doc_listado_comercial && <ImageCard title="Listado Comercial" src={op.doc_listado_comercial} />}
+                                {op.doc_formato_firmas && <ImageCard title="Formato Firmas" src={op.doc_formato_firmas} />}
+                                {op.doc_dj_propiedad && <ImageCard title="DJ Propiedad" src={op.doc_dj_propiedad} />}
+                                {op.doc_bonogas && <ImageCard title="BonoGas" src={op.doc_bonogas} />}
+                            </div>
+                        </>
+                    )}
 
                     {/* Map Placeholder */}
                     <div className="mt-6 p-4 rounded-lg bg-slate-900 border border-slate-800">

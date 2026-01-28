@@ -123,7 +123,7 @@ export default function HabilitationCard({ job, onComplete }: { job: Job; onComp
             const { error: dbError } = await supabase
                 .from('operaciones_maestra')
                 .update({
-                    estado_operativo: 'Habilitado',
+                    estado_operativo: 'Por Aprobar Habilitacion',
                     fecha_habilitacion: new Date().toISOString(),
                     foto_acta_habilitacion: publicUrl
                 })
@@ -142,7 +142,7 @@ export default function HabilitationCard({ job, onComplete }: { job: Job; onComp
 
     return (
         <>
-            <div className={`bg-slate-800 rounded-xl p-6 border shadow-md mb-4 transition-all relative overflow-hidden ${isPriority ? 'border-red-500/50 shadow-red-900/20 animate-pulse' : 'border-slate-700'}`}>
+            <div className={`bg-slate-800 rounded-xl p-6 border shadow-md mb-4 transition-all relative overflow-hidden ${isPriority ? 'border-red-500/50 shadow-red-900/20 animate-critical' : 'border-slate-700'}`}>
 
                 {isPriority && (
                     <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-bl-lg shadow-lg">
