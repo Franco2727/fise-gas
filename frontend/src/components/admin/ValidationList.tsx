@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X, Check, FileText, Loader2, ArrowRight, Search } from 'lucide-react';
+import { X, Check, FileText, Loader2, ArrowRight, Search, User } from 'lucide-react';
 import ValidationModal from './ValidationModal';
 
 interface Operation {
@@ -18,6 +18,7 @@ interface Operation {
     longitud?: number;
     estado_fise: string;
     porcentaje_financiamiento?: number;
+    vendedor_nombre?: string;
 }
 
 export default function ValidationList() {
@@ -109,6 +110,10 @@ export default function ValidationList() {
                                     <h3 className="font-bold text-white text-lg">{op.cliente_nombre}</h3>
                                     <div className="flex items-center gap-3 text-sm text-slate-400">
                                         <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">DNI: {op.id_dni}</span>
+                                        <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                        <span className='flex items-center gap-1'>
+                                            <User className='h-3 w-3 text-orange-500' /> {op.vendedor_nombre ? op.vendedor_nombre.split(' ')[0] : 'Vendedor'}
+                                        </span>
                                         <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
                                         <span>{new Date(op.fecha_creacion).toLocaleDateString()}</span>
                                     </div>

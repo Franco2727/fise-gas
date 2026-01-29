@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, MouseEvent, TouchEvent } from 'react';
-import { X, Check, RefreshCw, Eraser, ScanLine, Maximize, AlertCircle } from 'lucide-react';
+import { X, Check, RefreshCw, Eraser, ScanLine, Maximize, AlertCircle, RotateCw } from 'lucide-react';
 
 interface Point { x: number; y: number }
 
@@ -13,6 +13,8 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
     const [activePoint, setActivePoint] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [imgDimensions, setImgDimensions] = useState({ w: 0, h: 0 });
+    const [scanResult, setScanResult] = useState<string | null>(null);
+    const [finalFile, setFinalFile] = useState<File | null>(null);
 
     useEffect(() => {
         if (imageSrc) {
@@ -227,8 +229,9 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
             resultCanvas.toBlob(blob => {
                 if (blob) {
                     const file = new File([blob], "scanned_doc.jpg", { type: "image/jpeg" });
-                    onScan(file);
-                    onClose();
+                    const url = URL.createObjectURL(blob);
+                    setScanResult(url);
+                    setFinalFile(file);
                 }
                 setLoading(false);
             }, 'image/jpeg', 0.85);
@@ -236,6 +239,60 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
         } catch (e) {
             console.error(e);
             alert("Error al procesar imagen");
+            setLoading(false);
+        }
+    };
+
+    const handleConfirm = () => {
+        if (finalFile) {
+            onScan(finalFile);
+            onClose();
+        }
+    };
+
+    const handleRetry = () => {
+        setScanResult(null);
+        setFinalFile(null);
+    };
+
+    const handleRotate = async () => {
+        if (!scanResult) return;
+
+        try {
+            setLoading(true);
+            const img = new Image();
+            img.src = scanResult;
+            await new Promise(r => img.onload = r);
+
+            const canvas = document.createElement('canvas');
+            // Swap dimensions for 90deg rotation
+            canvas.width = img.height;
+            canvas.height = img.width;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Rotate context
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(90 * Math.PI / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            canvas.toBlob(blob => {
+                if (blob) {
+                    const file = new File([blob], "scanned_doc_rotated.jpg", { type: "image/jpeg" });
+                    const url = URL.createObjectURL(blob);
+
+                    // Revoke old
+                    URL.revokeObjectURL(scanResult);
+
+                    setScanResult(url);
+                    setFinalFile(file);
+                }
+                setLoading(false);
+            }, 'image/jpeg', 0.85);
+
+        } catch (e) {
+            console.error(e);
             setLoading(false);
         }
     };
@@ -323,87 +380,100 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
             <div
                 ref={containerRef}
                 className="flex-1 relative overflow-hidden flex items-center justify-center p-4 bg-black touch-none"
-                onMouseMove={onMouseMove}
-                onMouseUp={handleEnd}
-                onMouseLeave={handleEnd}
-                onTouchMove={onTouchMove}
-                onTouchEnd={handleEnd}
+                onMouseMove={!scanResult ? onMouseMove : undefined}
+                onMouseUp={!scanResult ? handleEnd : undefined}
+                onMouseLeave={!scanResult ? handleEnd : undefined}
+                onTouchMove={!scanResult ? onTouchMove : undefined}
+                onTouchEnd={!scanResult ? handleEnd : undefined}
             >
-                {/* Background Image */}
-                {/* We render the image essentially to ensure layout, but actually we draw on top with points. 
-                    Actually, better to use an img tag and overlay points div. 
-                */}
-                <img
-                    src={previewUrl}
-                    className="max-w-full max-h-full object-contain pointer-events-none select-none"
-                    alt="Scan Preview"
-                    ref={(el) => {
-                        // Trick: we need reference to this img to know current display rect
-                        if (el && canvasRef.current) {
-                            // Sync canvas size to visual size?
-                            // No, easier: Position points proportionally on top of the image container
-                        }
-                    }}
-                />
+                {/* Background Image / Result */}
+                {!scanResult ? (
+                    <img
+                        src={previewUrl}
+                        className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                        alt="Scan Preview"
+                        ref={(el) => {
+                            if (el && canvasRef.current) { }
+                        }}
+                    />
+                ) : (
+                    <img
+                        src={scanResult}
+                        className="max-w-full max-h-full object-contain select-none border-2 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                        alt="Scanned Result"
+                    />
+                )}
 
-                {/* Overlay SVG/Canvas for points */}
-                <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                        // We need this overlay to match the aspect ratio and size of the *displayed* image.
-                        // Implemented: use React `canvasRef` solely for computing global coords from relative. 
-                        // Wait, easier approach: 
-                        // Just rely on the natural image size and transform CSS to match display? 
-                        // Let's assume the user is fitting the image in the view.
-                    }}
-                >
-                    {/* Re-rendering logic simpler: Just render `canvas` hidden for logic, use `img` for view. 
-                        Visual Points:
-                    */}
-                </div>
+                {/* Overlay SVG/Canvas for points (Only in Edit Mode) */}
+                {!scanResult && (
+                    <div
+                        className="absolute inset-0 pointer-events-none"
+                    >
+                    </div>
+                )}
 
-                {/* Manual Visual Layer */}
-                {/* We iterate active points and render them relative to the container. 
-                    We need to map `points` (which are in natural img coords) to displayed screen coords.
-                */}
-                <div className="absolute inset-0" ref={(el) => { if (el) containerRef.current = el; }}>
-                    {/* SVG Overlay to draw lines between points */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 10 }}>
-                        {/* We need to get the rect of the *image* to map correctly. 
-                             This is tricky in React responsive layout. 
-                             Workaround: Force Image to specific logic or use a canvas to draw key image.
-                          */}
-                    </svg>
 
-                    {/* For simplicity in this v1 implementation: DRAW EVERYTHING on a visible canvas overlaid on image. */}
-                    {previewUrl && points.length === 4 && imgDimensions.w > 0 && (
-                        <CanvasOverlay
-                            imgUrl={previewUrl}
-                            points={points}
-                            onStart={handleStart}
-                            containerW={containerRef.current?.offsetWidth || 0}
-                            containerH={containerRef.current?.offsetHeight || 0}
-                            imgW={imgDimensions.w}
-                            imgH={imgDimensions.h}
-                        />
-                    )}
-
-                </div>
+                {/* Manual Visual Layer (Points) */}
+                {!scanResult && (
+                    <div className="absolute inset-0" ref={(el) => { if (el) containerRef.current = el; }}>
+                        {previewUrl && points.length === 4 && imgDimensions.w > 0 && (
+                            <CanvasOverlay
+                                imgUrl={previewUrl}
+                                points={points}
+                                onStart={handleStart}
+                                containerW={containerRef.current?.offsetWidth || 0}
+                                containerH={containerRef.current?.offsetHeight || 0}
+                                imgW={imgDimensions.w}
+                                imgH={imgDimensions.h}
+                            />
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Footer Controls */}
             <div className="bg-slate-900 p-6 border-t border-slate-800 flex justify-between items-center pb-8 sticky bottom-0 z-20">
-                <div className="text-white text-xs max-w-[150px] opacity-70">
-                    Arrastra los círculos naranjas a las esquinas del documento.
-                </div>
-                <button
-                    onClick={processImage}
-                    disabled={loading}
-                    className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-orange-900/20 active:scale-95 transition-all"
-                >
-                    {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <ScanLine className="h-5 w-5" />}
-                    ESCANEAR
-                </button>
+                {scanResult ? (
+                    <div className="flex justify-between w-full gap-2">
+                        <button
+                            onClick={handleRetry}
+                            className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 rounded-xl font-bold flex items-center gap-2"
+                        >
+                            <Eraser className="h-5 w-5" />
+                        </button>
+
+                        <button
+                            onClick={handleRotate}
+                            disabled={loading}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95 transition-all"
+                        >
+                            {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <RotateCw className="h-5 w-5" />}
+                            ROTAR
+                        </button>
+
+                        <button
+                            onClick={handleConfirm}
+                            className="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-green-900/20 active:scale-95 transition-all flex-1 justify-center"
+                        >
+                            <Check className="h-5 w-5" />
+                            CONFIRMAR
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="text-white text-xs max-w-[150px] opacity-70">
+                            Arrastra los círculos naranjas a las esquinas del documento.
+                        </div>
+                        <button
+                            onClick={processImage}
+                            disabled={loading}
+                            className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-orange-900/20 active:scale-95 transition-all"
+                        >
+                            {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <ScanLine className="h-5 w-5" />}
+                            ESCANEAR
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
