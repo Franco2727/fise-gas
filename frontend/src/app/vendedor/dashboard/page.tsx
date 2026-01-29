@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { UserPlus, Save, Loader2, LogOut, MapPin, AlertTriangle, CheckCircle, Clock, Camera, RefreshCw, Eye } from 'lucide-react';
+import { UserPlus, Save, Loader2, LogOut, MapPin, AlertTriangle, CheckCircle, Clock, Camera, RefreshCw, Eye, Paperclip, ScanLine } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import HistoryDetailModal from '@/components/shared/HistoryDetailModal';
+import ScannerModal from '@/components/shared/ScannerModal';
 
 export default function VendedorDashboard() {
     const { signOut, user } = useAuth();
@@ -18,6 +19,11 @@ export default function VendedorDashboard() {
 
     // For viewing history details
     const [reviewJob, setReviewJob] = useState<any | null>(null);
+
+    // Scanner State
+    const [scannerOpen, setScannerOpen] = useState(false);
+    const [scannerImage, setScannerImage] = useState<File | null>(null);
+    const [scannerTargetField, setScannerTargetField] = useState<keyof typeof files | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -44,10 +50,14 @@ export default function VendedorDashboard() {
         formatoFirmas: File | null;
         djPropiedad: File | null;
         bonogas: File | null;
+        dniFrontal: File | null;
+        dniReverso: File | null;
+        reciboServicio: File | null;
     }>({
         contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
         fachada: null, izquierda: null, derecha: null,
-        cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
+        cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
+        dniFrontal: null, dniReverso: null, reciboServicio: null
     });
 
     const [existingPhotos, setExistingPhotos] = useState<{
@@ -65,10 +75,14 @@ export default function VendedorDashboard() {
         formatoFirmas: string | null;
         djPropiedad: string | null;
         bonogas: string | null;
+        dniFrontal: string | null;
+        dniReverso: string | null;
+        reciboServicio: string | null;
     }>({
         contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
         fachada: null, izquierda: null, derecha: null,
-        cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
+        cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
+        dniFrontal: null, dniReverso: null, reciboServicio: null
     });
 
     const fetchSales = async () => {
@@ -132,7 +146,8 @@ export default function VendedorDashboard() {
             const fieldMap: Record<keyof typeof files, string> = {
                 contrato: 'contrato', contrato2: 'contrato_2', contrato3: 'contrato_3', contrato4: 'contrato_4', contrato5: 'contrato_5', contrato6: 'contrato_6',
                 fachada: 'fachada', izquierda: 'izquierda', derecha: 'derecha',
-                cartaAutorizacion: 'doc_carta', listadoComercial: 'doc_listado', formatoFirmas: 'doc_firmas', djPropiedad: 'doc_dj', bonogas: 'doc_bono'
+                cartaAutorizacion: 'doc_carta', listadoComercial: 'doc_listado', formatoFirmas: 'doc_firmas', djPropiedad: 'doc_dj', bonogas: 'doc_bono',
+                dniFrontal: 'dni_frontal', dniReverso: 'dni_reverso', reciboServicio: 'recibo_servicio'
             };
 
             // Upload all new files
@@ -178,6 +193,9 @@ export default function VendedorDashboard() {
             setField('doc_formato_firmas', 'formatoFirmas');
             setField('doc_dj_propiedad', 'djPropiedad');
             setField('doc_bonogas', 'bonogas');
+            setField('foto_dni_frontal', 'dniFrontal');
+            setField('foto_dni_reverso', 'dniReverso');
+            setField('foto_recibo_servicio', 'reciboServicio');
 
             let error;
             if (existing) {
@@ -203,12 +221,34 @@ export default function VendedorDashboard() {
         }
     };
 
+    const handleFileSelect = (field: keyof typeof files, file: File) => {
+        // Condition: Exclude Facade/Laterals from Scanner
+        const noScanFields = ['fachada', 'izquierda', 'derecha'];
+        if (noScanFields.includes(field)) {
+            setFiles(prev => ({ ...prev, [field]: file }));
+        } else {
+            // Open Scanner
+            setScannerTargetField(field);
+            setScannerImage(file);
+            setScannerOpen(true);
+        }
+    };
+
+    const handleScanned = (file: File) => {
+        if (scannerTargetField) {
+            setFiles(prev => ({ ...prev, [scannerTargetField]: file }));
+        }
+        setScannerTargetField(null);
+        setScannerImage(null);
+    };
+
     const resetForm = () => {
         setFormData({ dni: '', nombre: '', telefono: '', direccion: '', lat: null, lng: null });
         const emptyFiles = {
             contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
             fachada: null, izquierda: null, derecha: null,
-            cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
+            cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
+            dniFrontal: null, dniReverso: null, reciboServicio: null
         };
         setFiles(emptyFiles);
         // Cast nulls to correct type for existing photos
@@ -240,14 +280,18 @@ export default function VendedorDashboard() {
             listadoComercial: sale.doc_listado_comercial,
             formatoFirmas: sale.doc_formato_firmas,
             djPropiedad: sale.doc_dj_propiedad,
-            bonogas: sale.doc_bonogas
+            bonogas: sale.doc_bonogas,
+            dniFrontal: sale.foto_dni_frontal,
+            dniReverso: sale.foto_dni_reverso,
+            reciboServicio: sale.foto_recibo_servicio
         });
 
         // Reset new files
         setFiles({
             contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
             fachada: null, izquierda: null, derecha: null,
-            cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null
+            cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
+            dniFrontal: null, dniReverso: null, reciboServicio: null
         });
         setActiveTab('registro');
     };
@@ -284,21 +328,22 @@ export default function VendedorDashboard() {
         const hasExisting = existingPhotos[field];
         const hasNew = files[field];
         const isComplete = hasExisting || hasNew;
+        const noScan = ['fachada', 'izquierda', 'derecha'].includes(field);
 
         return (
             <div>
                 <label className="text-slate-300 text-sm block mb-1">{label}</label>
-                <label className={`block w-full border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all relative overflow-hidden group ${isComplete ? 'border-green-500/50 bg-green-500/10' : 'border-slate-700 hover:bg-slate-800'}`}>
-                    <input type="file" accept="image/*" className="hidden"
-                        onChange={e => setFiles(prev => ({ ...prev, [field]: e.target.files?.[0] || null }))}
-                    />
+                <div className={`block w-full border border-dashed rounded-lg p-3 text-center transition-all relative overflow-hidden group ${isComplete ? 'border-green-500/50 bg-green-500/10' : 'border-slate-700 hover:bg-slate-800'}`}>
 
                     {hasNew ? (
-                        <span className="text-sm text-green-400 font-medium flex items-center justify-center gap-2">
-                            <CheckCircle className="h-4 w-4" /> Nuevo: {files[field]?.name.substring(0, 10)}...
-                        </span>
+                        <div className="flex flex-col items-center gap-2">
+                            <span className="text-sm text-green-400 font-medium flex items-center justify-center gap-2">
+                                <CheckCircle className="h-4 w-4" /> Nuevo: {files[field]?.name.substring(0, 10)}...
+                            </span>
+                            <button onClick={() => setFiles(prev => ({ ...prev, [field]: null }))} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                        </div>
                     ) : hasExisting ? (
-                        <div className="relative h-24 w-full">
+                        <div className="relative h-24 w-full group">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={hasExisting} alt="Saved" className="h-full w-full object-cover rounded-md opacity-80" />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
@@ -311,19 +356,42 @@ export default function VendedorDashboard() {
                                     <RefreshCw className="h-3 w-3" /> Cambiar
                                 </span>
                             </div>
+                            {/* Overlay Cover inputs below to act as trigger */}
+                            <label className="absolute inset-0 cursor-pointer">
+                                <input type="file" accept="image/*" className="hidden"
+                                    onChange={e => e.target.files?.[0] && handleFileSelect(field, e.target.files[0])}
+                                />
+                            </label>
                         </div>
                     ) : (
-                        <span className="text-sm text-slate-500 flex items-center justify-center gap-2 py-4">
-                            <Camera className="h-4 w-4" /> Tomar Foto
-                        </span>
+                        <div className="flex gap-2 text-xs">
+                            <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg cursor-pointer flex justify-center items-center gap-1 border border-slate-700 transition-colors">
+                                <Camera className="h-3 w-3" /> {noScan ? 'Foto' : 'Scan'}
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+                                    if (e.target.files?.[0]) handleFileSelect(field, e.target.files[0]);
+                                }} />
+                            </label>
+                            <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg cursor-pointer flex justify-center items-center gap-1 border border-slate-700 transition-colors">
+                                <Paperclip className="h-3 w-3" /> Archivo
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                    if (e.target.files?.[0]) handleFileSelect(field, e.target.files[0]);
+                                }} />
+                            </label>
+                        </div>
                     )}
-                </label>
+                </div>
             </div>
         );
     };
 
     return (
         <div className="min-h-screen bg-slate-950 p-4 pb-20">
+            <ScannerModal
+                isOpen={scannerOpen}
+                imageSrc={scannerImage}
+                onClose={() => setScannerOpen(false)}
+                onScan={handleScanned}
+            />
             <header className="flex justify-between items-center mb-6 sticky top-0 bg-slate-950/90 py-2 z-10 backdrop-blur-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -387,7 +455,16 @@ export default function VendedorDashboard() {
                                 <FileInput label="Fachada" field="fachada" />
                                 <FileInput label="Lateral Izq." field="izquierda" />
                                 <FileInput label="Lateral Der." field="derecha" />
-                                <FileInput label="Contrato (Pág. 1)" field="contrato" />
+                                <FileInput label="Pág. 1 Contrato" field="contrato" />
+                            </div>
+
+                            <div className="mt-4 border-t border-slate-800 pt-3">
+                                <p className="text-slate-400 font-bold text-xs uppercase mb-3">Documentos de Identidad (DNI y Recibo) *</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <FileInput label="DNI Frontal" field="dniFrontal" />
+                                    <FileInput label="DNI Reverso" field="dniReverso" />
+                                    <FileInput label="Recibo Servicio" field="reciboServicio" />
+                                </div>
                             </div>
 
                             {/* Expanded Contract Section */}

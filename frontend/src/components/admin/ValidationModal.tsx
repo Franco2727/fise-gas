@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Check, FileText, MapPin, Maximize2 } from 'lucide-react';
+import { X, Check, FileText, MapPin, Maximize2, Download, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { jsPDF } from 'jspdf';
 
 interface Operation {
     id_dni: string;
@@ -23,6 +24,9 @@ interface Operation {
     doc_formato_firmas?: string;
     doc_dj_propiedad?: string;
     doc_bonogas?: string;
+    foto_dni_frontal?: string;
+    foto_dni_reverso?: string;
+    foto_recibo_servicio?: string;
     latitud?: number;
     longitud?: number;
     estado_fise: string;
@@ -34,6 +38,137 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
     const [isRejecting, setIsRejecting] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [customReason, setCustomReason] = useState('');
+    const [downloading, setDownloading] = useState(false);
+
+    const handleDownloadPDF = async () => {
+        setDownloading(true);
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+
+            const addImageToPage = (imgData: string | undefined, title: string) => {
+                if (!imgData) {
+                    doc.text(`[Sin Imagen: ${title}]`, 20, 20);
+                    return;
+                }
+                const props = doc.getImageProperties(imgData);
+                const ratio = props.width / props.height;
+                const imgWidth = pageWidth - 20;
+                const imgHeight = imgWidth / ratio;
+
+                doc.setFontSize(10);
+                doc.text(title, 10, 10);
+
+                if (imgHeight > pageHeight - 20) {
+                    doc.addImage(imgData, 'JPEG', 10, 15, imgWidth, pageHeight - 30);
+                } else {
+                    doc.addImage(imgData, 'JPEG', 10, 15, imgWidth, imgHeight);
+                }
+            };
+
+            const fetchImage = async (url: string | undefined) => {
+                if (!url) return undefined;
+                try {
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    return new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (e) {
+                    console.error('Error fetching image', e);
+                    return undefined;
+                }
+            };
+
+            // 1. Download all images relative to order
+            // Structure:
+            // 1-6: Contract (6 pages)
+            // 7: DNI Front + DNI Back
+            // 8: Service Bill
+            // 9: Facade
+            // 10: Left
+            // 11: Right
+            // 12+: Optionals
+
+            // Load images in parallel to speed up
+            const [
+                c1, c2, c3, c4, c5, c6,
+                dniF, dniR,
+                recibo,
+                fachada, izq, der,
+                carta, listado, firmas, dj, bono
+            ] = await Promise.all([
+                fetchImage(op.foto_contrato), fetchImage(op.foto_contrato_2), fetchImage(op.foto_contrato_3), fetchImage(op.foto_contrato_4), fetchImage(op.foto_contrato_5), fetchImage(op.foto_contrato_6),
+                fetchImage(op.foto_dni_frontal), fetchImage(op.foto_dni_reverso),
+                fetchImage(op.foto_recibo_servicio),
+                fetchImage(op.foto_fachada), fetchImage(op.foto_izquierda), fetchImage(op.foto_derecha),
+                fetchImage(op.doc_carta_autorizacion), fetchImage(op.doc_listado_comercial), fetchImage(op.doc_formato_firmas), fetchImage(op.doc_dj_propiedad), fetchImage(op.doc_bonogas)
+            ]);
+
+            // Page 1-6: Contract
+            if (c1) { addImageToPage(c1, 'Contrato - Pág. 1'); } else { doc.text('Falta Contrato Pág. 1', 20, 20); }
+
+            if (c2) { doc.addPage(); addImageToPage(c2, 'Contrato - Pág. 2'); }
+            if (c3) { doc.addPage(); addImageToPage(c3, 'Contrato - Pág. 3'); }
+            if (c4) { doc.addPage(); addImageToPage(c4, 'Contrato - Pág. 4'); }
+            if (c5) { doc.addPage(); addImageToPage(c5, 'Contrato - Pág. 5'); }
+            if (c6) { doc.addPage(); addImageToPage(c6, 'Contrato - Pág. 6'); }
+
+            // Page 7: DNI Front + Back
+            doc.addPage();
+            doc.text('Documento de Identidad (DNI)', 10, 10);
+            if (dniF) {
+                const props = doc.getImageProperties(dniF);
+                const ratio = props.width / props.height;
+                const w = pageWidth - 40;
+                const h = w / ratio;
+                doc.addImage(dniF, 'JPEG', 20, 20, w, h);
+
+                if (dniR) {
+                    const propsR = doc.getImageProperties(dniR);
+                    const ratioR = propsR.width / propsR.height;
+                    const hR = w / ratioR;
+                    doc.addImage(dniR, 'JPEG', 20, 20 + h + 10, w, hR);
+                }
+            } else {
+                doc.text('Falta DNI', 20, 30);
+            }
+
+            // Page 8: Service Bill
+            doc.addPage();
+            addImageToPage(recibo, 'Recibo de Servicio');
+
+            // Page 9: Facade
+            doc.addPage();
+            addImageToPage(fachada, 'Fachada');
+
+            // Page 10: Left
+            doc.addPage();
+            addImageToPage(izq, 'Lateral Izquierdo');
+
+            // Page 11: Right
+            doc.addPage();
+            addImageToPage(der, 'Lateral Derecho');
+
+            // Optionals
+            if (carta) { doc.addPage(); addImageToPage(carta, 'Carta de Autorización'); }
+            if (listado) { doc.addPage(); addImageToPage(listado, 'Listado Comercial'); }
+            if (firmas) { doc.addPage(); addImageToPage(firmas, 'Formato de Firmas'); }
+            if (dj) { doc.addPage(); addImageToPage(dj, 'DJ Propiedad'); }
+            if (bono) { doc.addPage(); addImageToPage(bono, 'BonoGas'); }
+
+            doc.save(`Expediente_${op.id_dni}.pdf`);
+
+        } catch (error) {
+            console.error(error);
+            alert('Error al generar PDF. Revise que las imágenes carguen correctamente.');
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const COMMON_REASONS = [
         'Foto de contrato ilegible',
@@ -81,11 +216,18 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                         <FileText className="h-4 w-4" /> Evidencias Multimedia
                     </h3>
 
-                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Principal</h4>
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Marcación y Fachada</h4>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <ImageCard title="Fachada" src={op.foto_fachada} />
                         <ImageCard title="Lat. Izquierda" src={op.foto_izquierda} />
                         <ImageCard title="Lat. Derecha" src={op.foto_derecha} />
+                    </div>
+
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Identidad (DNI y Recibo)</h4>
+                    <div className="grid grid-cols-3 gap-2 mb-6">
+                        <ImageCard title="DNI Frontal" src={op.foto_dni_frontal} />
+                        <ImageCard title="DNI Reverso" src={op.foto_dni_reverso} />
+                        <ImageCard title="Recibo Servicio" src={op.foto_recibo_servicio} />
                     </div>
 
                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Contrato (6 Páginas)</h4>
@@ -223,6 +365,14 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                                     className="flex-1 py-3 bg-red-500/10 hover:bg-red-900/30 text-red-500 border border-red-500/20 rounded-xl font-bold transition-colors"
                                 >
                                     Rechazar
+                                </button>
+                                <button
+                                    onClick={handleDownloadPDF}
+                                    disabled={downloading}
+                                    className="flex-1 py-3 bg-blue-500/10 hover:bg-blue-900/30 text-blue-400 border border-blue-500/20 rounded-xl font-bold transition-colors flex justify-center items-center gap-2"
+                                >
+                                    {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+                                    PDF
                                 </button>
                                 <button
                                     onClick={() => onResolve(op.id_dni, true, financing)}
