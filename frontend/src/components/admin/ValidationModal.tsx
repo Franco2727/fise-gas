@@ -49,21 +49,26 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
 
             const addImageToPage = (imgData: string | undefined, title: string) => {
                 if (!imgData) {
-                    doc.text(`[Sin Imagen: ${title}]`, 20, 20);
+                    // Only print placeholder if missing
+                    doc.setFontSize(10);
+                    doc.text(`[Falta: ${title}]`, 20, 20);
                     return;
                 }
                 const props = doc.getImageProperties(imgData);
                 const ratio = props.width / props.height;
+                // Use full page width minus small margin
                 const imgWidth = pageWidth - 20;
                 const imgHeight = imgWidth / ratio;
 
-                doc.setFontSize(10);
-                doc.text(title, 10, 10);
+                // Center logic if needed, but for now top-left with margin is fine.
+                // REMOVED TITLE TEXT logic as requested. 
+                // Images will be cleaner.
 
                 if (imgHeight > pageHeight - 20) {
-                    doc.addImage(imgData, 'JPEG', 10, 15, imgWidth, pageHeight - 30);
+                    // Scale to fit height if too tall
+                    doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, pageHeight - 20);
                 } else {
-                    doc.addImage(imgData, 'JPEG', 10, 15, imgWidth, imgHeight);
+                    doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
                 }
             };
 

@@ -202,20 +202,18 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
                         const b = srcPixels[srcIdx + 2];
 
                         // --- APPLY FILTERS HERE (Scanner Effect) ---
-                        // 1. Grayscale
-                        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                        // 2. High Contrast / Binarization simulation
-                        // Simple linear contrast: (val - 128) * contrast + 128
-                        const contrast = 1.5;
-                        let final = (gray - 128) * contrast + 128;
-                        // Brightness boost
-                        final += 20;
-                        if (final > 255) final = 255;
-                        if (final < 0) final = 0;
+                        // 1. Grayscale (DISABLED for Color)
+                        // const gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
-                        data[dstIdx] = final;     // R
-                        data[dstIdx + 1] = final; // G
-                        data[dstIdx + 2] = final; // B
+                        // 2. High Contrast / Binarization simulation (DISABLED)
+                        // Simple linear contrast: (val - 128) * contrast + 128
+                        // const contrast = 1.5;
+                        // let final = (gray - 128) * contrast + 128; // ...
+
+                        // KEEP ORIGINAL COLOR
+                        data[dstIdx] = r;
+                        data[dstIdx + 1] = g;
+                        data[dstIdx + 2] = b;
                         data[dstIdx + 3] = 255;   // Alpha
                     } else {
                         data[dstIdx + 3] = 0; // Transparent if out of bounds
@@ -226,6 +224,7 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
             ctx.putImageData(dstData, 0, 0);
 
             // Convert to File
+            // HIGH QUALITY, NO DOWNSCALING
             resultCanvas.toBlob(blob => {
                 if (blob) {
                     const file = new File([blob], "scanned_doc.jpg", { type: "image/jpeg" });
@@ -234,7 +233,7 @@ export default function ScannerModal({ imageSrc, isOpen, onClose, onScan }: { im
                     setFinalFile(file);
                 }
                 setLoading(false);
-            }, 'image/jpeg', 0.85);
+            }, 'image/jpeg', 1.0); // Max Quality 1.0
 
         } catch (e) {
             console.error(e);
