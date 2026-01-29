@@ -33,10 +33,30 @@ export default function HistoryDetailModal({ job, role, onClose }: HistoryDetail
 
         // Vendedor ONLY sees Sales Photos
         if (role === 'vendedor') {
+            // Main Evidence
             if (job.foto_fachada) list.push({ title: 'Fachada', url: job.foto_fachada, type: 'image' });
-            if (job.foto_contrato) list.push({ title: 'Contrato', url: job.foto_contrato, type: 'image' });
             if (job.foto_izquierda) list.push({ title: 'Lateral Izq.', url: job.foto_izquierda, type: 'image' });
             if (job.foto_derecha) list.push({ title: 'Lateral Der.', url: job.foto_derecha, type: 'image' });
+
+            // Identity
+            if (job.foto_dni_frontal) list.push({ title: 'DNI Frontal', url: job.foto_dni_frontal, type: 'image' });
+            if (job.foto_dni_reverso) list.push({ title: 'DNI Reverso', url: job.foto_dni_reverso, type: 'image' });
+            if (job.foto_recibo_servicio) list.push({ title: 'Recibo Servicio', url: job.foto_recibo_servicio, type: 'image' });
+
+            // Contract (All Pages)
+            if (job.foto_contrato) list.push({ title: 'Contrato Pág. 1', url: job.foto_contrato, type: 'image' });
+            if (job.foto_contrato_2) list.push({ title: 'Contrato Pág. 2', url: job.foto_contrato_2, type: 'image' });
+            if (job.foto_contrato_3) list.push({ title: 'Contrato Pág. 3', url: job.foto_contrato_3, type: 'image' });
+            if (job.foto_contrato_4) list.push({ title: 'Contrato Pág. 4', url: job.foto_contrato_4, type: 'image' });
+            if (job.foto_contrato_5) list.push({ title: 'Contrato Pág. 5', url: job.foto_contrato_5, type: 'image' });
+            if (job.foto_contrato_6) list.push({ title: 'Contrato Pág. 6', url: job.foto_contrato_6, type: 'image' });
+
+            // Optional Docs
+            if (job.doc_carta_autorizacion) list.push({ title: 'Carta Autorización', url: job.doc_carta_autorizacion, type: 'image' });
+            if (job.doc_listado_comercial) list.push({ title: 'Listado Comercial', url: job.doc_listado_comercial, type: 'image' });
+            if (job.doc_formato_firmas) list.push({ title: 'Formato Firmas', url: job.doc_formato_firmas, type: 'image' });
+            if (job.doc_dj_propiedad) list.push({ title: 'DJ Propiedad', url: job.doc_dj_propiedad, type: 'image' });
+            if (job.doc_bonogas) list.push({ title: 'BonoGas', url: job.doc_bonogas, type: 'image' });
         }
 
         // Technician ONLY sees Installation Photos

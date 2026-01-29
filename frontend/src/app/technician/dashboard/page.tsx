@@ -49,10 +49,12 @@ export default function TechnicianDashboard() {
 
         // Fetch Pending (Logic remains: pending jobs are pool-based or assigned? 
         // If pool based, no filter. If assigned, maybe filter. Assuming pool for now based on current code)
+        // CRITICAL FIX: Ensure ONLY 'Aprobado' sales are visible.
         const { data: pendingData } = await supabase
             .from('operaciones_maestra')
             .select('*')
             .eq('estado_operativo', 'Por instalar')
+            .eq('estado_fise', 'Aprobado')
             .order('fecha_aprobacion', { ascending: true });
 
         // Fetch History with Filters (YOUR JOBS ONLY)
