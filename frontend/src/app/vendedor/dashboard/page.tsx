@@ -364,20 +364,18 @@ export default function VendedorDashboard() {
                             </label>
                         </div>
                     ) : (
-                        <div className="flex gap-2 text-xs">
-                            <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg cursor-pointer flex justify-center items-center gap-1 border border-slate-700 transition-colors">
-                                <Camera className="h-3 w-3" /> {noScan ? 'Foto' : 'Scan'}
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+                        <label className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white py-3 rounded-lg cursor-pointer flex justify-center items-center gap-2 border border-slate-700 transition-all hover:border-slate-500 shadow-sm">
+                            <Camera className="h-4 w-4" />
+                            <span className="font-semibold text-xs">{noScan ? 'Tomar / Subir Foto' : 'Escanear / Subir'}</span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
                                     if (e.target.files?.[0]) handleFileSelect(field, e.target.files[0]);
-                                }} />
-                            </label>
-                            <label className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg cursor-pointer flex justify-center items-center gap-1 border border-slate-700 transition-colors">
-                                <Paperclip className="h-3 w-3" /> Archivo
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                                    if (e.target.files?.[0]) handleFileSelect(field, e.target.files[0]);
-                                }} />
-                            </label>
-                        </div>
+                                }}
+                            />
+                        </label>
                     )}
                 </div>
             </div>
@@ -455,7 +453,6 @@ export default function VendedorDashboard() {
                                 <FileInput label="Fachada" field="fachada" />
                                 <FileInput label="Lateral Izq." field="izquierda" />
                                 <FileInput label="Lateral Der." field="derecha" />
-                                <FileInput label="Pág. 1 Contrato" field="contrato" />
                             </div>
 
                             <div className="mt-4 border-t border-slate-800 pt-3">
@@ -471,6 +468,7 @@ export default function VendedorDashboard() {
                             <div className="mt-4 border-t border-slate-800 pt-3">
                                 <p className="text-slate-400 font-bold text-xs uppercase mb-3">Contrato Completo (Obligatorio)</p>
                                 <div className="grid grid-cols-3 gap-2">
+                                    <FileInput label="Pág. 1" field="contrato" />
                                     <FileInput label="Pág. 2" field="contrato2" />
                                     <FileInput label="Pág. 3" field="contrato3" />
                                     <FileInput label="Pág. 4" field="contrato4" />
