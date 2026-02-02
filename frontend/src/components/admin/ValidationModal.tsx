@@ -19,6 +19,7 @@ interface Operation {
     foto_contrato_6?: string;
     foto_izquierda?: string;
     foto_derecha?: string;
+    foto_cocina?: string;
     doc_carta_autorizacion?: string;
     doc_listado_comercial?: string;
     doc_formato_firmas?: string;
@@ -103,13 +104,13 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                 c1, c2, c3, c4, c5, c6,
                 dniF, dniR,
                 recibo,
-                fachada, izq, der,
+                fachada, izq, der, cocina,
                 carta, listado, firmas, dj, bono
             ] = await Promise.all([
                 fetchImage(op.foto_contrato), fetchImage(op.foto_contrato_2), fetchImage(op.foto_contrato_3), fetchImage(op.foto_contrato_4), fetchImage(op.foto_contrato_5), fetchImage(op.foto_contrato_6),
                 fetchImage(op.foto_dni_frontal), fetchImage(op.foto_dni_reverso),
                 fetchImage(op.foto_recibo_servicio),
-                fetchImage(op.foto_fachada), fetchImage(op.foto_izquierda), fetchImage(op.foto_derecha),
+                fetchImage(op.foto_fachada), fetchImage(op.foto_izquierda), fetchImage(op.foto_derecha), fetchImage(op.foto_cocina),
                 fetchImage(op.doc_carta_autorizacion), fetchImage(op.doc_listado_comercial), fetchImage(op.doc_formato_firmas), fetchImage(op.doc_dj_propiedad), fetchImage(op.doc_bonogas)
             ]);
 
@@ -157,6 +158,10 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
             // Page 11: Right
             doc.addPage();
             addImageToPage(der, 'Lateral Derecho');
+
+            // Page 12: Kitchen
+            doc.addPage();
+            addImageToPage(cocina, 'Ambiente Cocina');
 
             // Optionals
             if (carta) { doc.addPage(); addImageToPage(carta, 'Carta de Autorización'); }
@@ -226,6 +231,7 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                         <ImageCard title="Fachada" src={op.foto_fachada} />
                         <ImageCard title="Lat. Izquierda" src={op.foto_izquierda} />
                         <ImageCard title="Lat. Derecha" src={op.foto_derecha} />
+                        <ImageCard title="Ambiente Cocina" src={op.foto_cocina} />
                     </div>
 
                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Identidad (DNI y Recibo)</h4>

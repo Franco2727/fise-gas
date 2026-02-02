@@ -37,6 +37,7 @@ export default function HistoryDetailModal({ job, role, onClose }: HistoryDetail
             if (job.foto_fachada) list.push({ title: 'Fachada', url: job.foto_fachada, type: 'image' });
             if (job.foto_izquierda) list.push({ title: 'Lateral Izq.', url: job.foto_izquierda, type: 'image' });
             if (job.foto_derecha) list.push({ title: 'Lateral Der.', url: job.foto_derecha, type: 'image' });
+            if (job.foto_cocina) list.push({ title: 'Ambiente Cocina', url: job.foto_cocina, type: 'image' });
 
             // Identity
             if (job.foto_dni_frontal) list.push({ title: 'DNI Frontal', url: job.foto_dni_frontal, type: 'image' });

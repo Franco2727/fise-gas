@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { UserPlus, Save, Loader2, LogOut, MapPin, AlertTriangle, CheckCircle, Clock, Camera, RefreshCw, Eye, Paperclip, ScanLine } from 'lucide-react';
+import { UserPlus, Save, Loader2, LogOut, MapPin, AlertTriangle, CheckCircle, Clock, Camera, RefreshCw, Eye, Paperclip, ScanLine, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import HistoryDetailModal from '@/components/shared/HistoryDetailModal';
 import ScannerModal from '@/components/shared/ScannerModal';
@@ -45,6 +45,7 @@ export default function VendedorDashboard() {
         fachada: File | null;
         izquierda: File | null;
         derecha: File | null;
+        cocina: File | null;
         cartaAutorizacion: File | null;
         listadoComercial: File | null;
         formatoFirmas: File | null;
@@ -55,7 +56,7 @@ export default function VendedorDashboard() {
         reciboServicio: File | null;
     }>({
         contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
-        fachada: null, izquierda: null, derecha: null,
+        fachada: null, izquierda: null, derecha: null, cocina: null,
         cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
         dniFrontal: null, dniReverso: null, reciboServicio: null
     });
@@ -70,6 +71,7 @@ export default function VendedorDashboard() {
         fachada: string | null;
         izquierda: string | null;
         derecha: string | null;
+        cocina: string | null;
         cartaAutorizacion: string | null;
         listadoComercial: string | null;
         formatoFirmas: string | null;
@@ -80,7 +82,7 @@ export default function VendedorDashboard() {
         reciboServicio: string | null;
     }>({
         contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
-        fachada: null, izquierda: null, derecha: null,
+        fachada: null, izquierda: null, derecha: null, cocina: null,
         cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
         dniFrontal: null, dniReverso: null, reciboServicio: null
     });
@@ -145,7 +147,7 @@ export default function VendedorDashboard() {
             // Map fields to prefixes
             const fieldMap: Record<keyof typeof files, string> = {
                 contrato: 'contrato', contrato2: 'contrato_2', contrato3: 'contrato_3', contrato4: 'contrato_4', contrato5: 'contrato_5', contrato6: 'contrato_6',
-                fachada: 'fachada', izquierda: 'izquierda', derecha: 'derecha',
+                fachada: 'fachada', izquierda: 'izquierda', derecha: 'derecha', cocina: 'cocina',
                 cartaAutorizacion: 'doc_carta', listadoComercial: 'doc_listado', formatoFirmas: 'doc_firmas', djPropiedad: 'doc_dj', bonogas: 'doc_bono',
                 dniFrontal: 'dni_frontal', dniReverso: 'dni_reverso', reciboServicio: 'recibo_servicio'
             };
@@ -173,10 +175,9 @@ export default function VendedorDashboard() {
                 estado_fise: partial ? 'Incompleto' : 'Pendiente'
             };
 
-            // Helper to set payload field - favors new upload, falls back to existing
+            // Helper to set payload field - favors new upload, falls back to existing, or clears if null
             const setField = (payloadKey: string, stateKey: keyof typeof files) => {
-                if (uploads[stateKey]) payload[payloadKey] = uploads[stateKey];
-                else if (existingPhotos[stateKey]) payload[payloadKey] = existingPhotos[stateKey];
+                payload[payloadKey] = uploads[stateKey] || existingPhotos[stateKey] || null;
             };
 
             setField('foto_contrato', 'contrato');
@@ -188,6 +189,7 @@ export default function VendedorDashboard() {
             setField('foto_fachada', 'fachada');
             setField('foto_izquierda', 'izquierda');
             setField('foto_derecha', 'derecha');
+            setField('foto_cocina', 'cocina');
             setField('doc_carta_autorizacion', 'cartaAutorizacion');
             setField('doc_listado_comercial', 'listadoComercial');
             setField('doc_formato_firmas', 'formatoFirmas');
@@ -222,8 +224,8 @@ export default function VendedorDashboard() {
     };
 
     const handleFileSelect = (field: keyof typeof files, file: File) => {
-        // Condition: Exclude Facade/Laterals from Scanner
-        const noScanFields = ['fachada', 'izquierda', 'derecha'];
+        // Condition: Exclude Facade/Laterals/Kitchen from Scanner
+        const noScanFields = ['fachada', 'izquierda', 'derecha', 'cocina'];
         if (noScanFields.includes(field)) {
             setFiles(prev => ({ ...prev, [field]: file }));
         } else {
@@ -246,7 +248,7 @@ export default function VendedorDashboard() {
         setFormData({ dni: '', nombre: '', telefono: '', direccion: '', lat: null, lng: null });
         const emptyFiles = {
             contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
-            fachada: null, izquierda: null, derecha: null,
+            fachada: null, izquierda: null, derecha: null, cocina: null,
             cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
             dniFrontal: null, dniReverso: null, reciboServicio: null
         };
@@ -276,6 +278,7 @@ export default function VendedorDashboard() {
             fachada: sale.foto_fachada,
             izquierda: sale.foto_izquierda,
             derecha: sale.foto_derecha,
+            cocina: sale.foto_cocina,
             cartaAutorizacion: sale.doc_carta_autorizacion,
             listadoComercial: sale.doc_listado_comercial,
             formatoFirmas: sale.doc_formato_firmas,
@@ -328,7 +331,7 @@ export default function VendedorDashboard() {
         const hasExisting = existingPhotos[field];
         const hasNew = files[field];
         const isComplete = hasExisting || hasNew;
-        const noScan = ['fachada', 'izquierda', 'derecha'].includes(field);
+        const noScan = ['fachada', 'izquierda', 'derecha', 'cocina'].includes(field);
 
         return (
             <div>
@@ -346,12 +349,27 @@ export default function VendedorDashboard() {
                         <div className="relative h-24 w-full group">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={hasExisting} alt="Saved" className="h-full w-full object-cover rounded-md opacity-80" />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+
+                            <div className="absolute top-1 right-1 z-20">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation(); // Prevent triggering file input
+                                        setExistingPhotos(prev => ({ ...prev, [field]: null }));
+                                    }}
+                                    className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-md transition-colors"
+                                    title="Quitar foto"
+                                >
+                                    <LogOut className="h-3 w-3" /> {/* Reusing LogOut icon as 'Exit/Remove' or X if available, else X from lucide */}
+                                </button>
+                            </div>
+
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/60 pointer-events-none">
                                 <span className="text-white text-xs font-bold flex items-center gap-1">
                                     <CheckCircle className="h-3 w-3 text-green-400" /> Guardado
                                 </span>
                             </div>
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                 <span className="text-white text-xs flex items-center gap-1">
                                     <RefreshCw className="h-3 w-3" /> Cambiar
                                 </span>
@@ -453,6 +471,7 @@ export default function VendedorDashboard() {
                                 <FileInput label="Fachada" field="fachada" />
                                 <FileInput label="Lateral Izq." field="izquierda" />
                                 <FileInput label="Lateral Der." field="derecha" />
+                                <FileInput label="Ambiente Cocina" field="cocina" />
                             </div>
 
                             <div className="mt-4 border-t border-slate-800 pt-3">
@@ -569,6 +588,16 @@ export default function VendedorDashboard() {
                             >
                                 <Eye className="h-3 w-3" /> Ver Evidencias
                             </button>
+
+                            {/* Edit Button for Pendiente/Rechazado */}
+                            {(sale.estado_fise === 'Pendiente' || sale.estado_fise === 'Rechazado' || sale.estado_fise === 'Observado') && (
+                                <button
+                                    onClick={() => loadIncomplete(sale)}
+                                    className="w-full mt-2 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 hover:text-orange-400 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 border border-orange-500/20"
+                                >
+                                    <UserPlus className="h-3 w-3" /> Modificar
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>
