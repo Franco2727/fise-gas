@@ -108,8 +108,8 @@ export default function VendedorDashboard() {
         const { data } = await query;
 
         if (data) {
-            setSales(data.filter(s => s.estado_fise !== 'Incompleto'));
-            setIncompleteSales(data.filter(s => s.estado_fise === 'Incompleto'));
+            setSales(data.filter(s => s.estado_fise !== 'Incompleto' && s.estado_fise !== 'Observado')); // Exclude Observado from History
+            setIncompleteSales(data.filter(s => s.estado_fise === 'Incompleto' || s.estado_fise === 'Observado')); // Include in Actionable
         }
     };
 
@@ -543,17 +543,31 @@ export default function VendedorDashboard() {
                     {incompleteSales.map(sale => {
                         const timeStatus = checkTimeRemaining(sale.fecha_creacion);
                         return (
-                            <div key={sale.id_dni} onClick={() => loadIncomplete(sale)} className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-orange-500/50 transition-colors cursor-pointer group">
+                            <div key={sale.id_dni} onClick={() => loadIncomplete(sale)} className={`bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-orange-500/50 transition-colors cursor-pointer group ${sale.estado_fise === 'Observado' ? 'border-yellow-500/30' : ''}`}>
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-bold text-white group-hover:text-orange-400 transition-colors">{sale.cliente_nombre}</h3>
-                                    <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1 ${timeStatus.expired ? 'bg-red-500/20 text-red-500' : 'bg-blue-500/20 text-blue-400'}`}>
-                                        <Clock className="h-3 w-3" /> {timeStatus.text}
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1 ${timeStatus.expired ? 'bg-red-500/20 text-red-500' : 'bg-blue-500/20 text-blue-400'}`}>
+                                            <Clock className="h-3 w-3" /> {timeStatus.text}
+                                        </div>
+                                        {sale.estado_fise === 'Observado' && (
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 flex items-center gap-1">
+                                                <Eye className="h-3 w-3" /> Observado
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="text-sm text-slate-400 mb-1">{sale.cliente_direccion}</div>
+
+                                {sale.estado_fise === 'Observado' && sale.motivo_rechazo && (
+                                    <div className="mt-2 text-xs bg-yellow-950/30 text-yellow-200 p-2 rounded border border-yellow-500/20">
+                                        <span className="font-bold block mb-0.5">Motivo:</span> {sale.motivo_rechazo}
+                                    </div>
+                                )}
+
                                 <div className="flex justify-between items-center text-xs text-slate-500 mt-3 border-t border-slate-800 pt-2">
                                     <span>Creado: {new Date(sale.fecha_creacion).toLocaleDateString()}</span>
-                                    <span className="text-orange-500 font-medium flex items-center gap-1">Continuar Registro <CheckCircle className="h-3 w-3" /></span>
+                                    <span className="text-orange-500 font-medium flex items-center gap-1">{sale.estado_fise === 'Observado' ? 'Corregir' : 'Continuar'} <CheckCircle className="h-3 w-3" /></span>
                                 </div>
                             </div>
                         );

@@ -5,7 +5,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-type UserRole = 'admin' | 'tecnico' | 'habilitador' | null;
+type UserRole = 'admin' | 'tecnico' | 'habilitador' | 'vendedor' | 'supervisor' | null;
 
 interface AuthContextType {
     user: User | null;

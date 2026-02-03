@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Check, FileText, MapPin, Maximize2, Download, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { X, Check, FileText, MapPin, Maximize2, Download, Loader2, MessageSquare, AlertTriangle } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 
 interface Operation {
@@ -33,11 +32,18 @@ interface Operation {
     estado_fise: string;
 }
 
-export default function ValidationModal({ op, onClose, onResolve }: { op: Operation; onClose: () => void; onResolve: (dni: string, approved: boolean, financing: number, rejectionReason?: string) => void }) {
+interface ValidationModalProps {
+    op: Operation;
+    role?: string | null;
+    onClose: () => void;
+    onResolve: (dni: string, status: string, financing: number, rejectionReason?: string) => void;
+}
+
+export default function ValidationModal({ op, role, onClose, onResolve }: ValidationModalProps) {
     const [financing, setFinancing] = useState(100);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const [isRejecting, setIsRejecting] = useState(false);
-    const [rejectionReason, setRejectionReason] = useState('');
+    const [actionType, setActionType] = useState<'reject' | 'observe' | null>(null);
+    const [reason, setReason] = useState('');
     const [customReason, setCustomReason] = useState('');
     const [downloading, setDownloading] = useState(false);
 
@@ -50,23 +56,16 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
 
             const addImageToPage = (imgData: string | undefined, title: string) => {
                 if (!imgData) {
-                    // Only print placeholder if missing
                     doc.setFontSize(10);
                     doc.text(`[Falta: ${title}]`, 20, 20);
                     return;
                 }
                 const props = doc.getImageProperties(imgData);
                 const ratio = props.width / props.height;
-                // Use full page width minus small margin
                 const imgWidth = pageWidth - 20;
                 const imgHeight = imgWidth / ratio;
 
-                // Center logic if needed, but for now top-left with margin is fine.
-                // REMOVED TITLE TEXT logic as requested. 
-                // Images will be cleaner.
-
                 if (imgHeight > pageHeight - 20) {
-                    // Scale to fit height if too tall
                     doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, pageHeight - 20);
                 } else {
                     doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
@@ -89,17 +88,6 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                 }
             };
 
-            // 1. Download all images relative to order
-            // Structure:
-            // 1-6: Contract (6 pages)
-            // 7: DNI Front + DNI Back
-            // 8: Service Bill
-            // 9: Facade
-            // 10: Left
-            // 11: Right
-            // 12+: Optionals
-
-            // Load images in parallel to speed up
             const [
                 c1, c2, c3, c4, c5, c6,
                 dniF, dniR,
@@ -114,16 +102,13 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                 fetchImage(op.doc_carta_autorizacion), fetchImage(op.doc_listado_comercial), fetchImage(op.doc_formato_firmas), fetchImage(op.doc_dj_propiedad), fetchImage(op.doc_bonogas)
             ]);
 
-            // Page 1-6: Contract
             if (c1) { addImageToPage(c1, 'Contrato - Pág. 1'); } else { doc.text('Falta Contrato Pág. 1', 20, 20); }
-
             if (c2) { doc.addPage(); addImageToPage(c2, 'Contrato - Pág. 2'); }
             if (c3) { doc.addPage(); addImageToPage(c3, 'Contrato - Pág. 3'); }
             if (c4) { doc.addPage(); addImageToPage(c4, 'Contrato - Pág. 4'); }
             if (c5) { doc.addPage(); addImageToPage(c5, 'Contrato - Pág. 5'); }
             if (c6) { doc.addPage(); addImageToPage(c6, 'Contrato - Pág. 6'); }
 
-            // Page 7: DNI Front + Back
             doc.addPage();
             doc.text('Documento de Identidad (DNI)', 10, 10);
             if (dniF) {
@@ -132,7 +117,6 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                 const w = pageWidth - 40;
                 const h = w / ratio;
                 doc.addImage(dniF, 'JPEG', 20, 20, w, h);
-
                 if (dniR) {
                     const propsR = doc.getImageProperties(dniR);
                     const ratioR = propsR.width / propsR.height;
@@ -143,27 +127,12 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                 doc.text('Falta DNI', 20, 30);
             }
 
-            // Page 8: Service Bill
-            doc.addPage();
-            addImageToPage(recibo, 'Recibo de Servicio');
+            doc.addPage(); addImageToPage(recibo, 'Recibo de Servicio');
+            doc.addPage(); addImageToPage(fachada, 'Fachada');
+            doc.addPage(); addImageToPage(izq, 'Lateral Izquierdo');
+            doc.addPage(); addImageToPage(der, 'Lateral Derecho');
+            doc.addPage(); addImageToPage(cocina, 'Ambiente Cocina');
 
-            // Page 9: Facade
-            doc.addPage();
-            addImageToPage(fachada, 'Fachada');
-
-            // Page 10: Left
-            doc.addPage();
-            addImageToPage(izq, 'Lateral Izquierdo');
-
-            // Page 11: Right
-            doc.addPage();
-            addImageToPage(der, 'Lateral Derecho');
-
-            // Page 12: Kitchen
-            doc.addPage();
-            addImageToPage(cocina, 'Ambiente Cocina');
-
-            // Optionals
             if (carta) { doc.addPage(); addImageToPage(carta, 'Carta de Autorización'); }
             if (listado) { doc.addPage(); addImageToPage(listado, 'Listado Comercial'); }
             if (firmas) { doc.addPage(); addImageToPage(firmas, 'Formato de Firmas'); }
@@ -188,10 +157,12 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
         'Firma no coincide'
     ];
 
-    const handleConfirmReject = () => {
-        const finalReason = rejectionReason === 'Otro' ? customReason : rejectionReason;
+    const handleConfirmAction = () => {
+        const finalReason = reason === 'Otro' ? customReason : reason;
         if (!finalReason) return alert('Debes especificar un motivo');
-        onResolve(op.id_dni, false, financing, finalReason);
+
+        const status = actionType === 'reject' ? 'Rechazado' : 'Observado';
+        onResolve(op.id_dni, status, financing, finalReason);
     };
 
     const ImageCard = ({ title, src }: { title: string, src?: string }) => (
@@ -215,6 +186,8 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
             </div>
         </div>
     );
+
+    const isSupervisor = role === 'supervisor';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
@@ -293,33 +266,40 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
 
                     {/* Scrollable Content */}
                     <div className="flex-1 overflow-y-auto p-6 min-h-0 custom-scrollbar">
-                        {isRejecting ? (
+                        {actionType ? (
                             <div className="animate-in fade-in slide-in-from-right-4">
-                                <h3 className="text-red-500 font-bold mb-4">Motivo del Rechazo</h3>
+                                <h3 className={`font-bold mb-4 flex items-center gap-2 ${actionType === 'reject' ? 'text-red-500' : 'text-yellow-500'}`}>
+                                    {actionType === 'reject' ? <AlertTriangle className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
+                                    {actionType === 'reject' ? 'Motivo del Rechazo' : 'Observaciones / Correcciones'}
+                                </h3>
                                 <div className="space-y-2 mb-4">
-                                    {COMMON_REASONS.map(reason => (
+                                    {COMMON_REASONS.map(r => (
                                         <button
-                                            key={reason}
-                                            onClick={() => setRejectionReason(reason)}
-                                            className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${rejectionReason === reason ? 'bg-red-500/20 border-red-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            key={r}
+                                            onClick={() => setReason(r)}
+                                            className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${reason === r ?
+                                                (actionType === 'reject' ? 'bg-red-500/20 border-red-500 text-white' : 'bg-yellow-500/20 border-yellow-500 text-white')
+                                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
                                         >
-                                            {reason}
+                                            {r}
                                         </button>
                                     ))}
                                     <button
-                                        onClick={() => setRejectionReason('Otro')}
-                                        className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${rejectionReason === 'Otro' ? 'bg-red-500/20 border-red-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                        onClick={() => setReason('Otro')}
+                                        className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${reason === 'Otro' ?
+                                            (actionType === 'reject' ? 'bg-red-500/20 border-red-500 text-white' : 'bg-yellow-500/20 border-yellow-500 text-white')
+                                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
                                     >
                                         Otro motivo...
                                     </button>
                                 </div>
 
-                                {rejectionReason === 'Otro' && (
+                                {reason === 'Otro' && (
                                     <textarea
                                         value={customReason}
                                         onChange={e => setCustomReason(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm h-24 resize-none focus:ring-2 focus:ring-red-500 outline-none"
-                                        placeholder="Escribe el motivo del rechazo..."
+                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm h-24 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="Escribe el detalle..."
                                     />
                                 )}
                             </div>
@@ -334,63 +314,77 @@ export default function ValidationModal({ op, onClose, onResolve }: { op: Operat
                                     <p className="text-white text-sm mt-1">{new Date(op.fecha_creacion).toLocaleString()}</p>
                                 </div>
 
-                                <div className="pt-4 border-t border-slate-800">
-                                    <label className="text-sm font-semibold text-orange-500 block mb-2">Porcentaje Financiamiento</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[100, 75, 50].map(pct => (
-                                            <button
-                                                key={pct}
-                                                onClick={() => setFinancing(pct)}
-                                                className={`py-2 rounded-lg text-sm font-bold border transition-all ${financing === pct ? 'bg-orange-600 text-white border-orange-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}
-                                            >
-                                                {pct}%
-                                            </button>
-                                        ))}
+                                {!isSupervisor && (
+                                    <div className="pt-4 border-t border-slate-800">
+                                        <label className="text-sm font-semibold text-orange-500 block mb-2">Porcentaje Financiamiento</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[100, 75, 50].map(pct => (
+                                                <button
+                                                    key={pct}
+                                                    onClick={() => setFinancing(pct)}
+                                                    className={`py-2 rounded-lg text-sm font-bold border transition-all ${financing === pct ? 'bg-orange-600 text-white border-orange-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}
+                                                >
+                                                    {pct}%
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         )}
                     </div>
 
                     {/* Footer Actions - Fixed */}
                     <div className="p-6 border-t border-slate-800 bg-slate-900 shrink-0">
-                        {isRejecting ? (
+                        {actionType ? (
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => setIsRejecting(false)}
+                                    onClick={() => setActionType(null)}
                                     className="flex-1 py-3 text-slate-400 hover:text-white font-medium"
                                 >
                                     Cancelar
                                 </button>
                                 <button
-                                    onClick={handleConfirmReject}
-                                    className="flex-[2] py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-900/20"
+                                    onClick={handleConfirmAction}
+                                    className={`flex-[2] py-3 text-white rounded-xl font-bold shadow-lg transition-colors ${actionType === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-900/20' : 'bg-yellow-600 hover:bg-yellow-700 shadow-yellow-900/20'
+                                        }`}
                                 >
-                                    Confirmar Rechazo
+                                    {actionType === 'reject' ? 'Confirmar Rechazo' : 'Enviar Observación'}
                                 </button>
                             </div>
                         ) : (
-                            <div className="flex gap-3">
+                            <div className="flex gap-2">
                                 <button
-                                    onClick={() => setIsRejecting(true)}
-                                    className="flex-1 py-3 bg-red-500/10 hover:bg-red-900/30 text-red-500 border border-red-500/20 rounded-xl font-bold transition-colors"
+                                    onClick={() => setActionType('reject')}
+                                    className="px-4 py-3 bg-red-500/10 hover:bg-red-900/30 text-red-500 border border-red-500/20 rounded-xl font-bold transition-colors"
+                                    title="Rechazar definitivamente"
                                 >
-                                    Rechazar
+                                    <X className="h-5 w-5" />
                                 </button>
+
+                                <button
+                                    onClick={() => setActionType('observe')}
+                                    className="flex-1 py-3 bg-yellow-500/10 hover:bg-yellow-900/30 text-yellow-500 border border-yellow-500/20 rounded-xl font-bold transition-colors flex justify-center items-center gap-2"
+                                >
+                                    <MessageSquare className="h-5 w-5" />
+                                    Observar
+                                </button>
+
                                 <button
                                     onClick={handleDownloadPDF}
                                     disabled={downloading}
-                                    className="flex-1 py-3 bg-blue-500/10 hover:bg-blue-900/30 text-blue-400 border border-blue-500/20 rounded-xl font-bold transition-colors flex justify-center items-center gap-2"
+                                    className="px-4 py-3 bg-blue-500/10 hover:bg-blue-900/30 text-blue-400 border border-blue-500/20 rounded-xl font-bold transition-colors flex justify-center items-center gap-2"
+                                    title="Descargar PDF"
                                 >
                                     {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
-                                    PDF
                                 </button>
+
                                 <button
-                                    onClick={() => onResolve(op.id_dni, true, financing)}
+                                    onClick={() => onResolve(op.id_dni, 'Aprobado', financing)}
                                     className="flex-[2] py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-900/20 flex justify-center items-center gap-2 transition-colors"
                                 >
                                     <Check className="h-5 w-5" />
-                                    Aprobar Expediente
+                                    Aprobar
                                 </button>
                             </div>
                         )}

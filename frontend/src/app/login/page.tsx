@@ -35,6 +35,7 @@ export default function LoginPage() {
             else if (role === 'tecnico') router.push('/technician/dashboard');
             else if (role === 'habilitador') router.push('/habilitador/dashboard');
             else if (role === 'vendedor') router.push('/vendedor/dashboard');
+            else if (role === 'supervisor') router.push('/supervisor/dashboard');
             else router.push('/'); // Fallback
 
         } catch (err: any) {

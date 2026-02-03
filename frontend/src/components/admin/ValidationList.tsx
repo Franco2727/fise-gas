@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { X, Check, FileText, Loader2, ArrowRight, Search, User } from 'lucide-react';
 import ValidationModal from './ValidationModal';
+import { useAuth } from '@/context/AuthContext';
 
 interface Operation {
     id_dni: string;
@@ -26,6 +27,7 @@ export default function ValidationList() {
     const [loading, setLoading] = useState(true);
     const [selectedOp, setSelectedOp] = useState<Operation | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const { role } = useAuth();
 
     const fetchOperations = async () => {
         setLoading(true);
@@ -45,14 +47,14 @@ export default function ValidationList() {
         fetchOperations();
     }, []);
 
-    const handleResolve = async (id_dni: string, approved: boolean, financing: number, rejectionReason?: string) => {
+    const handleResolve = async (id_dni: string, status: string, financing: number, rejectionReason?: string) => {
         setSelectedOp(null); // Close modal
         setOperations(prev => prev.filter(op => op.id_dni !== id_dni)); // Optimistic remove
 
         const updates: any = {
-            estado_fise: approved ? 'Aprobado' : 'Rechazado'
+            estado_fise: status
         };
-        if (approved) {
+        if (status === 'Aprobado') {
             updates.porcentaje_financiamiento = financing;
         }
         if (rejectionReason) {
@@ -135,6 +137,7 @@ export default function ValidationList() {
             {selectedOp && (
                 <ValidationModal
                     op={selectedOp}
+                    role={role}
                     onClose={() => setSelectedOp(null)}
                     onResolve={handleResolve}
                 />
