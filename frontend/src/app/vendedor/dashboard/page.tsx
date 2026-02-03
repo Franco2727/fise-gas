@@ -292,7 +292,7 @@ export default function VendedorDashboard() {
         // Reset new files
         setFiles({
             contrato: null, contrato2: null, contrato3: null, contrato4: null, contrato5: null, contrato6: null,
-            fachada: null, izquierda: null, derecha: null,
+            fachada: null, izquierda: null, derecha: null, cocina: null,
             cartaAutorizacion: null, listadoComercial: null, formatoFirmas: null, djPropiedad: null, bonogas: null,
             dniFrontal: null, dniReverso: null, reciboServicio: null
         });
