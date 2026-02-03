@@ -88,10 +88,24 @@ export default function VendedorDashboard() {
     });
 
     const fetchSales = async () => {
-        const { data } = await supabase
+        let query = supabase
             .from('operaciones_maestra')
             .select('*')
             .order('fecha_creacion', { ascending: false });
+
+        if (user) {
+            // Filter by ID (New) OR Name (Legacy)
+            const userName = user.user_metadata?.full_name || '';
+            // Note: .or() requires the column names to be qualified if complex, but simple version:
+            // "vendedor_id.eq.UUID,vendedor_nombre.eq.NAME"
+            if (userName) {
+                query = query.or(`vendedor_id.eq.${user.id},vendedor_nombre.eq.${userName}`);
+            } else {
+                query = query.eq('vendedor_id', user.id);
+            }
+        }
+
+        const { data } = await query;
 
         if (data) {
             setSales(data.filter(s => s.estado_fise !== 'Incompleto'));
@@ -172,6 +186,7 @@ export default function VendedorDashboard() {
                 latitud: formData.lat,
                 longitud: formData.lng,
                 vendedor_nombre: user?.user_metadata?.full_name || 'Vendedor Desconocido',
+                vendedor_id: user?.id,
                 estado_fise: partial ? 'Incompleto' : 'Pendiente'
             };
 
