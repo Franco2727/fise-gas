@@ -10,6 +10,7 @@ interface Operation {
     cliente_direccion: string;
     fecha_creacion: string;
     foto_fachada: string;
+    foto_fachada_panoramica?: string;
     foto_contrato?: string;
     foto_contrato_2?: string;
     foto_contrato_3?: string;
@@ -27,6 +28,9 @@ interface Operation {
     foto_dni_frontal?: string;
     foto_dni_reverso?: string;
     foto_recibo_servicio?: string;
+    foto_propietario_dni_frontal?: string;
+    foto_propietario_dni_reverso?: string;
+    fotos_opcionales?: { nombre: string; url: string }[];
     latitud?: number;
     longitud?: number;
     estado_fise: string;
@@ -54,21 +58,46 @@ export default function ValidationModal({ op, role, onClose, onResolve }: Valida
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
 
-            const addImageToPage = (imgData: string | undefined, title: string) => {
+            // Helper: add a page with title label + image
+            const addFullPage = (imgData: string | undefined, title: string) => {
+                doc.setFontSize(9);
+                doc.setTextColor(120, 120, 120);
+                doc.text(title, 10, 8);
+                doc.setFontSize(12);
+                doc.setTextColor(40, 40, 40);
                 if (!imgData) {
-                    doc.setFontSize(10);
-                    doc.text(`[Falta: ${title}]`, 20, 20);
+                    doc.text(`[Sin imagen: ${title}]`, 20, 20);
                     return;
                 }
                 const props = doc.getImageProperties(imgData);
                 const ratio = props.width / props.height;
-                const imgWidth = pageWidth - 20;
-                const imgHeight = imgWidth / ratio;
+                const imgW = pageWidth - 20;
+                const imgH = imgW / ratio;
+                const maxH = pageHeight - 20;
+                doc.addImage(imgData, 'JPEG', 10, 12, imgW, imgH > maxH ? maxH : imgH);
+            };
 
-                if (imgHeight > pageHeight - 20) {
-                    doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, pageHeight - 20);
-                } else {
-                    doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
+            // Helper: add two small images side by side on one page
+            const addTwoSideBySide = (left: string | undefined, leftTitle: string, right: string | undefined, rightTitle: string, pageTitle: string) => {
+                doc.setFontSize(9);
+                doc.setTextColor(120, 120, 120);
+                doc.text(pageTitle, 10, 8);
+                const half = (pageWidth - 30) / 2;
+                if (left) {
+                    const p = doc.getImageProperties(left);
+                    const h = half / (p.width / p.height);
+                    doc.addImage(left, 'JPEG', 10, 14, half, h > 100 ? 100 : h);
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(leftTitle, 10, h > 100 ? 118 : 16 + h);
+                }
+                if (right) {
+                    const p = doc.getImageProperties(right);
+                    const h = half / (p.width / p.height);
+                    doc.addImage(right, 'JPEG', 20 + half, 14, half, h > 100 ? 100 : h);
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(rightTitle, 20 + half, h > 100 ? 118 : 16 + h);
                 }
             };
 
@@ -88,58 +117,100 @@ export default function ValidationModal({ op, role, onClose, onResolve }: Valida
                 }
             };
 
+            // ── Cover / Summary Page ──
+            doc.setFontSize(18);
+            doc.setTextColor(30, 30, 30);
+            doc.text('EXPEDIENTE FISE GAS', pageWidth / 2, 30, { align: 'center' });
+            doc.setFontSize(11);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`Cliente: ${op.cliente_nombre}`, 20, 50);
+            doc.text(`DNI: ${op.id_dni}`, 20, 60);
+            doc.text(`Dirección: ${op.cliente_direccion}`, 20, 70);
+            doc.text(`Fecha Captación: ${new Date(op.fecha_creacion).toLocaleString('es-PE')}`, 20, 80);
+            if (op.latitud && op.longitud) {
+                doc.text(`Coordenadas GPS: ${op.latitud.toFixed(5)}, ${op.longitud.toFixed(5)}`, 20, 90);
+                doc.text(`Google Maps: maps.google.com/maps?q=${op.latitud},${op.longitud}`, 20, 100);
+            } else {
+                doc.setTextColor(180, 80, 80);
+                doc.text('GPS: No capturado', 20, 90);
+            }
+
+            // ── Fetch all images in parallel ──
             const [
                 c1, c2, c3, c4, c5, c6,
                 dniF, dniR,
+                propDniF, propDniR,
                 recibo,
-                fachada, izq, der, cocina,
+                fachada, fachadaPan, izq, der, cocina,
                 carta, listado, firmas, dj, bono
             ] = await Promise.all([
-                fetchImage(op.foto_contrato), fetchImage(op.foto_contrato_2), fetchImage(op.foto_contrato_3), fetchImage(op.foto_contrato_4), fetchImage(op.foto_contrato_5), fetchImage(op.foto_contrato_6),
+                fetchImage(op.foto_contrato), fetchImage(op.foto_contrato_2),
+                fetchImage(op.foto_contrato_3), fetchImage(op.foto_contrato_4),
+                fetchImage(op.foto_contrato_5), fetchImage(op.foto_contrato_6),
                 fetchImage(op.foto_dni_frontal), fetchImage(op.foto_dni_reverso),
+                fetchImage(op.foto_propietario_dni_frontal), fetchImage(op.foto_propietario_dni_reverso),
                 fetchImage(op.foto_recibo_servicio),
-                fetchImage(op.foto_fachada), fetchImage(op.foto_izquierda), fetchImage(op.foto_derecha), fetchImage(op.foto_cocina),
-                fetchImage(op.doc_carta_autorizacion), fetchImage(op.doc_listado_comercial), fetchImage(op.doc_formato_firmas), fetchImage(op.doc_dj_propiedad), fetchImage(op.doc_bonogas)
+                fetchImage(op.foto_fachada), fetchImage(op.foto_fachada_panoramica),
+                fetchImage(op.foto_izquierda), fetchImage(op.foto_derecha), fetchImage(op.foto_cocina),
+                fetchImage(op.doc_carta_autorizacion), fetchImage(op.doc_listado_comercial),
+                fetchImage(op.doc_formato_firmas), fetchImage(op.doc_dj_propiedad), fetchImage(op.doc_bonogas)
             ]);
 
-            if (c1) { addImageToPage(c1, 'Contrato - Pág. 1'); } else { doc.text('Falta Contrato Pág. 1', 20, 20); }
-            if (c2) { doc.addPage(); addImageToPage(c2, 'Contrato - Pág. 2'); }
-            if (c3) { doc.addPage(); addImageToPage(c3, 'Contrato - Pág. 3'); }
-            if (c4) { doc.addPage(); addImageToPage(c4, 'Contrato - Pág. 4'); }
-            if (c5) { doc.addPage(); addImageToPage(c5, 'Contrato - Pág. 5'); }
-            if (c6) { doc.addPage(); addImageToPage(c6, 'Contrato - Pág. 6'); }
-
-            doc.addPage();
-            doc.text('Documento de Identidad (DNI)', 10, 10);
-            if (dniF) {
-                const props = doc.getImageProperties(dniF);
-                const ratio = props.width / props.height;
-                const w = pageWidth - 40;
-                const h = w / ratio;
-                doc.addImage(dniF, 'JPEG', 20, 20, w, h);
-                if (dniR) {
-                    const propsR = doc.getImageProperties(dniR);
-                    const ratioR = propsR.width / propsR.height;
-                    const hR = w / ratioR;
-                    doc.addImage(dniR, 'JPEG', 20, 20 + h + 10, w, hR);
+            // Fotos opcionales (may vary)
+            const fotosOpcData: { nombre: string; data: string | undefined }[] = [];
+            if (op.fotos_opcionales && op.fotos_opcionales.length > 0) {
+                for (const f of op.fotos_opcionales) {
+                    const data = await fetchImage(f.url);
+                    fotosOpcData.push({ nombre: f.nombre || 'Foto Opcional', data });
                 }
-            } else {
-                doc.text('Falta DNI', 20, 30);
             }
 
-            doc.addPage(); addImageToPage(recibo, 'Recibo de Servicio');
-            doc.addPage(); addImageToPage(fachada, 'Fachada');
-            doc.addPage(); addImageToPage(izq, 'Lateral Izquierdo');
-            doc.addPage(); addImageToPage(der, 'Lateral Derecho');
-            doc.addPage(); addImageToPage(cocina, 'Ambiente Cocina');
+            // ── Contrato (6 páginas) ──
+            if (c1) { doc.addPage(); addFullPage(c1, 'CONTRATO — Pág. 1'); }
+            if (c2) { doc.addPage(); addFullPage(c2, 'CONTRATO — Pág. 2'); }
+            if (c3) { doc.addPage(); addFullPage(c3, 'CONTRATO — Pág. 3'); }
+            if (c4) { doc.addPage(); addFullPage(c4, 'CONTRATO — Pág. 4'); }
+            if (c5) { doc.addPage(); addFullPage(c5, 'CONTRATO — Pág. 5'); }
+            if (c6) { doc.addPage(); addFullPage(c6, 'CONTRATO — Pág. 6'); }
 
-            if (carta) { doc.addPage(); addImageToPage(carta, 'Carta de Autorización'); }
-            if (listado) { doc.addPage(); addImageToPage(listado, 'Listado Comercial'); }
-            if (firmas) { doc.addPage(); addImageToPage(firmas, 'Formato de Firmas'); }
-            if (dj) { doc.addPage(); addImageToPage(dj, 'DJ Propiedad'); }
-            if (bono) { doc.addPage(); addImageToPage(bono, 'BonoGas'); }
+            // ── DNI Solicitante (lado a lado) ──
+            if (dniF || dniR) {
+                doc.addPage();
+                addTwoSideBySide(dniF, 'DNI Frontal', dniR, 'DNI Reverso', 'IDENTIDAD SOLICITANTE');
+            }
 
-            doc.save(`Expediente_${op.id_dni}.pdf`);
+            // ── Recibo de Servicio ──
+            if (recibo) { doc.addPage(); addFullPage(recibo, 'RECIBO DE SERVICIO'); }
+
+            // ── DNI Propietario (si existe, lado a lado) ──
+            if (propDniF || propDniR) {
+                doc.addPage();
+                addTwoSideBySide(propDniF, 'DNI Propietario Frontal', propDniR, 'DNI Propietario Reverso', 'DOCUMENTOS DEL PROPIETARIO (Opcional)');
+            }
+
+            // ── Evidencias Visuales ──
+            if (fachada) { doc.addPage(); addFullPage(fachada, 'EVIDENCIA — Fachada'); }
+            if (fachadaPan) { doc.addPage(); addFullPage(fachadaPan, 'EVIDENCIA — Fachada Panorámica'); }
+            if (izq) { doc.addPage(); addFullPage(izq, 'EVIDENCIA — Lateral Izquierdo'); }
+            if (der) { doc.addPage(); addFullPage(der, 'EVIDENCIA — Lateral Derecho'); }
+            if (cocina) { doc.addPage(); addFullPage(cocina, 'EVIDENCIA — Ambiente Cocina'); }
+
+            // ── Documentos Adicionales opcionales ──
+            if (carta) { doc.addPage(); addFullPage(carta, 'DOC. ADICIONAL — Carta de Autorización'); }
+            if (listado) { doc.addPage(); addFullPage(listado, 'DOC. ADICIONAL — Listado Comercial'); }
+            if (firmas) { doc.addPage(); addFullPage(firmas, 'DOC. ADICIONAL — Formato de Firmas'); }
+            if (dj) { doc.addPage(); addFullPage(dj, 'DOC. ADICIONAL — DJ Propiedad'); }
+            if (bono) { doc.addPage(); addFullPage(bono, 'DOC. ADICIONAL — BonoGas'); }
+
+            // ── Fotos Opcionales (con nombre personalizado) ──
+            for (const foto of fotosOpcData) {
+                if (foto.data) {
+                    doc.addPage();
+                    addFullPage(foto.data, `FOTO OPCIONAL — ${foto.nombre}`);
+                }
+            }
+
+            doc.save(`Expediente_${op.id_dni}_${op.cliente_nombre.replace(/\s+/g, '_')}.pdf`);
 
         } catch (error) {
             console.error(error);
@@ -202,17 +273,28 @@ export default function ValidationModal({ op, role, onClose, onResolve }: Valida
                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Marcación y Fachada</h4>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <ImageCard title="Fachada" src={op.foto_fachada} />
+                        {op.foto_fachada_panoramica && <ImageCard title="Fachada Panorámica" src={op.foto_fachada_panoramica} />}
                         <ImageCard title="Lat. Izquierda" src={op.foto_izquierda} />
                         <ImageCard title="Lat. Derecha" src={op.foto_derecha} />
                         <ImageCard title="Ambiente Cocina" src={op.foto_cocina} />
                     </div>
 
-                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Identidad (DNI y Recibo)</h4>
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Identidad Solicitante (DNI y Recibo)</h4>
                     <div className="grid grid-cols-3 gap-2 mb-6">
                         <ImageCard title="DNI Frontal" src={op.foto_dni_frontal} />
                         <ImageCard title="DNI Reverso" src={op.foto_dni_reverso} />
                         <ImageCard title="Recibo Servicio" src={op.foto_recibo_servicio} />
                     </div>
+
+                    {(op.foto_propietario_dni_frontal || op.foto_propietario_dni_reverso) && (
+                        <>
+                            <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">DNI Propietario</h4>
+                            <div className="grid grid-cols-2 gap-2 mb-6">
+                                {op.foto_propietario_dni_frontal && <ImageCard title="DNI Propietario Frontal" src={op.foto_propietario_dni_frontal} />}
+                                {op.foto_propietario_dni_reverso && <ImageCard title="DNI Propietario Reverso" src={op.foto_propietario_dni_reverso} />}
+                            </div>
+                        </>
+                    )}
 
                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Contrato (6 Páginas)</h4>
                     <div className="grid grid-cols-3 gap-2 mb-6">
@@ -237,17 +319,56 @@ export default function ValidationModal({ op, role, onClose, onResolve }: Valida
                         </>
                     )}
 
-                    {/* Map Placeholder */}
-                    <div className="mt-6 p-4 rounded-lg bg-slate-900 border border-slate-800">
-                        <div className="text-xs text-slate-500 mb-2 flex items-center gap-1">
-                            <MapPin className="h-3 w-3" /> Geolocalización del Vendedor
-                        </div>
-                        {op.latitud ? (
-                            <div className="text-sm text-blue-400">
-                                Lat: {op.latitud}, Lng: {op.longitud} <br />
-                                <a href={`https://www.google.com/maps?q=${op.latitud},${op.longitud}`} target="_blank" className="underline hover:text-blue-300">Ver en Google Maps</a>
+                    {op.fotos_opcionales && op.fotos_opcionales.length > 0 && (
+                        <>
+                            <h4 className="text-xs font-bold text-orange-400 uppercase mb-2 mt-4">Fotos Opcionales</h4>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                {op.fotos_opcionales.map((f, i) => (
+                                    <ImageCard key={i} title={f.nombre || `Foto ${i + 1}`} src={f.url} />
+                                ))}
                             </div>
-                        ) : <div className="text-sm text-yellow-600">No se capturó GPS</div>}
+                        </>
+                    )}
+
+                    {/* Mini-Mapa GPS */}
+                    <div className="mt-6 rounded-xl overflow-hidden border border-slate-700">
+                        <div className="bg-slate-900 px-3 py-2 flex items-center gap-2 border-b border-slate-800">
+                            <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Geolocalización del Vendedor</span>
+                            {op.latitud && (
+                                <span className="ml-auto text-[10px] text-slate-500">
+                                    {op.latitud.toFixed(5)}, {op.longitud?.toFixed(5)}
+                                </span>
+                            )}
+                        </div>
+                        {op.latitud && op.longitud ? (
+                            <>
+                                <iframe
+                                    src={`https://maps.google.com/maps?q=${op.latitud},${op.longitud}&z=17&output=embed`}
+                                    width="100%"
+                                    height="220"
+                                    style={{ border: 0 }}
+                                    allowFullScreen
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer-when-downgrade"
+                                    title="Mapa de ubicación del solicitante"
+                                />
+                                <div className="bg-slate-950 px-3 py-1.5 flex justify-end">
+                                    <a
+                                        href={`https://www.google.com/maps?q=${op.latitud},${op.longitud}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[11px] text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                                    >
+                                        <MapPin className="h-3 w-3" /> Abrir en Google Maps
+                                    </a>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="bg-slate-950 px-4 py-4 text-xs text-yellow-600 flex items-center gap-2">
+                                <MapPin className="h-4 w-4" /> GPS no capturado en este registro
+                            </div>
+                        )}
                     </div>
                 </div>
 

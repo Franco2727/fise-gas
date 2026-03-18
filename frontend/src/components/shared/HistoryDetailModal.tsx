@@ -35,14 +35,19 @@ export default function HistoryDetailModal({ job, role, onClose }: HistoryDetail
         if (role === 'vendedor') {
             // Main Evidence
             if (job.foto_fachada) list.push({ title: 'Fachada', url: job.foto_fachada, type: 'image' });
+            if (job.foto_fachada_panoramica) list.push({ title: 'Fachada Panorámica', url: job.foto_fachada_panoramica, type: 'image' });
             if (job.foto_izquierda) list.push({ title: 'Lateral Izq.', url: job.foto_izquierda, type: 'image' });
             if (job.foto_derecha) list.push({ title: 'Lateral Der.', url: job.foto_derecha, type: 'image' });
             if (job.foto_cocina) list.push({ title: 'Ambiente Cocina', url: job.foto_cocina, type: 'image' });
 
-            // Identity
-            if (job.foto_dni_frontal) list.push({ title: 'DNI Frontal', url: job.foto_dni_frontal, type: 'image' });
-            if (job.foto_dni_reverso) list.push({ title: 'DNI Reverso', url: job.foto_dni_reverso, type: 'image' });
+            // Identity - Solicitante
+            if (job.foto_dni_frontal) list.push({ title: 'DNI Frontal (Solicitante)', url: job.foto_dni_frontal, type: 'image' });
+            if (job.foto_dni_reverso) list.push({ title: 'DNI Reverso (Solicitante)', url: job.foto_dni_reverso, type: 'image' });
             if (job.foto_recibo_servicio) list.push({ title: 'Recibo Servicio', url: job.foto_recibo_servicio, type: 'image' });
+
+            // Identity - Propietario (optional)
+            if (job.foto_propietario_dni_frontal) list.push({ title: 'DNI Propietario (Frontal)', url: job.foto_propietario_dni_frontal, type: 'image' });
+            if (job.foto_propietario_dni_reverso) list.push({ title: 'DNI Propietario (Reverso)', url: job.foto_propietario_dni_reverso, type: 'image' });
 
             // Contract (All Pages)
             if (job.foto_contrato) list.push({ title: 'Contrato Pág. 1', url: job.foto_contrato, type: 'image' });
@@ -58,6 +63,13 @@ export default function HistoryDetailModal({ job, role, onClose }: HistoryDetail
             if (job.doc_formato_firmas) list.push({ title: 'Formato Firmas', url: job.doc_formato_firmas, type: 'image' });
             if (job.doc_dj_propiedad) list.push({ title: 'DJ Propiedad', url: job.doc_dj_propiedad, type: 'image' });
             if (job.doc_bonogas) list.push({ title: 'BonoGas', url: job.doc_bonogas, type: 'image' });
+
+            // Fotos Opcionales
+            if (job.fotos_opcionales && Array.isArray(job.fotos_opcionales)) {
+                job.fotos_opcionales.forEach((f: { nombre: string; url: string }) => {
+                    if (f.url) list.push({ title: f.nombre || 'Foto Opcional', url: f.url, type: 'image' });
+                });
+            }
         }
 
         // Technician ONLY sees Installation Photos
